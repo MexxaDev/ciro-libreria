@@ -1,6 +1,7 @@
 'use strict';
 
 import { productRepo, categoryRepo, saleItemRepo } from '../../db/repositories.js';
+import db from '../../db/indexeddb.js';
 import Modal from '../../components/modal.js';
 import Toast from '../../components/toast.js';
 import { validateProduct } from '../../utils/validators.js';
@@ -80,6 +81,71 @@ class Products {
       Modal.close();
       this.openModal(null, { barcode: code });
     });
+  }
+
+  exportProducts() {
+    const json = JSON.stringify(this.products, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `productos-${new Date().toISOString().substring(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    Toast.success('Éxito', 'Productos exportados correctamente');
+  }
+
+  importProducts(file) {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      let imported;
+      try {
+        imported = JSON.parse(e.target.result);
+      } catch {
+        Toast.error('Error', 'El archivo JSON no es válido');
+        return;
+      }
+
+      if (!Array.isArray(imported)) {
+        Toast.error('Error', 'El archivo no contiene una lista de productos');
+        return;
+      }
+
+      if (imported.length > 0 && (!imported[0].name || imported[0].price === undefined)) {
+        Toast.error('Error', 'El archivo no tiene el formato de productos esperado');
+        return;
+      }
+
+      const body = `
+        <p>Se importarán <strong>${imported.length}</strong> productos.</p>
+        <p style="color:var(--color-warning);font-size:var(--text-sm);margin-top:var(--space-2);">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          Todos los productos actuales serán reemplazados.
+        </p>
+      `;
+      const footer = `
+        <button class="btn btn-secondary" id="import-cancel">Cancelar</button>
+        <button class="btn btn-danger" id="import-confirm">Reemplazar Productos</button>
+      `;
+
+      Modal.show({ title: 'Importar Productos', body, footer });
+
+      document.getElementById('import-cancel').addEventListener('click', () => Modal.close());
+      document.getElementById('import-confirm').addEventListener('click', async () => {
+        Modal.close();
+        try {
+          await db.clear('products');
+          await productRepo.saveAll(imported);
+          Toast.success('Éxito', `${imported.length} productos importados`);
+          state.emit('data:products-changed');
+          this.load();
+        } catch (error) {
+          logger.error('Products', 'Error importing products:', error);
+          Toast.error('Error', 'No se pudieron importar los productos');
+        }
+      });
+    };
+    reader.readAsText(file);
   }
 
   render() {

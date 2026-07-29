@@ -368,6 +368,27 @@ async function loadModule(route) {
             }
           });
         }
+        const exportBtn = document.getElementById('export-products-btn');
+        if (exportBtn && !exportBtn._handlerAttached) {
+          exportBtn._handlerAttached = true;
+          exportBtn.addEventListener('click', () => Products.exportProducts());
+        }
+        const importBtn = document.getElementById('import-products-btn');
+        if (importBtn && !importBtn._handlerAttached) {
+          importBtn._handlerAttached = true;
+          importBtn.addEventListener('click', () => document.getElementById('import-products-file')?.click());
+        }
+        const importFile = document.getElementById('import-products-file');
+        if (importFile && !importFile._handlerAttached) {
+          importFile._handlerAttached = true;
+          importFile.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+              Products.importProducts(file);
+              importFile.value = '';
+            }
+          });
+        }
         break;
       }
       case 'categories': {

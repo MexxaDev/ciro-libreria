@@ -172,6 +172,13 @@
               />
             </div>
             <button class="btn btn-primary" id="add-product-btn">+ Nuevo Producto</button>
+            <button class="btn btn-secondary" id="export-products-btn">
+              <i class="fa-solid fa-file-export"></i> Exportar
+            </button>
+            <button class="btn btn-secondary" id="import-products-btn">
+              <i class="fa-solid fa-file-import"></i> Importar
+            </button>
+            <input type="file" accept=".json" id="import-products-file" style="display: none" />
           </div>
           <div id="product-list">
             <p style="color: var(--color-text-secondary)">Cargando productos...</p>

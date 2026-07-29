@@ -71,6 +71,14 @@ describe('validators', () => {
       const errors = validateProduct({ name: 'Test', price: 0, stock: 5 });
       assert.ok(errors.some(e => e.includes('precio')));
     });
+    it('should allow price 0 for variablePrice products', () => {
+      const errors = validateProduct({ name: 'Test', price: 0, stock: 5, variablePrice: true });
+      assert.equal(errors.length, 0);
+    });
+    it('should reject non-numeric price for variablePrice products', () => {
+      const errors = validateProduct({ name: 'Test', price: NaN, stock: 5, variablePrice: true });
+      assert.ok(errors.some(e => e.includes('precio')));
+    });
     it('should require integer stock', () => {
       const errors = validateProduct({ name: 'Test', price: 100, stock: 1.5 });
       assert.ok(errors.some(e => e.includes('stock')));

@@ -11,7 +11,7 @@ import {
 } from '../../db/repositories.js';
 import Modal from '../../components/modal.js';
 import Toast from '../../components/toast.js';
-import { getPayments, getMethodTotal } from '../../utils/payments.js';
+import { getPayments, PAYMENT_METHODS } from '../../utils/payments.js';
 import state from '../../js/state.js';
 import { exportCashToPDF } from '../../utils/pdfExport.js';
 import { logger } from '../../utils/logger.js';
@@ -123,6 +123,7 @@ class CashService {
       accountSales: summary.accountSales,
       totalSales: summary.totalSales,
       expectedTotal: summary.expectedTotal,
+      methods: summary.methods || null,
       finalAmount: finalAmount,
       difference: difference,
       userId: session.userId,
@@ -168,7 +169,7 @@ class CashService {
       for (const item of items) {
         if (item.productId && item.quantity) {
           const product = await productRepo.findById(item.productId);
-          if (product) {
+          if (product && !product.variablePrice) {
             await productRepo.update({ ...product, stock: (product.stock || 0) + item.quantity });
           }
         }
@@ -178,7 +179,7 @@ class CashService {
       if (accountPayment && accountPayment.amount > 0 && sale.customerId && sale.customerId !== 'cust_final') {
         const customer = await customerRepo.findById(sale.customerId);
         if (customer) {
-          await customerRepo.update({ ...customer, balance: (customer.balance || 0) + accountPayment.amount });
+          await customerRepo.update({ ...customer, balance: (customer.balance || 0) - accountPayment.amount });
           state.emit('data:customers-changed');
         }
       }
@@ -188,7 +189,7 @@ class CashService {
     }
   }
 
-  async addMovement(type, amount, description = '') {
+  async addMovement(type, amount, description = '', paymentMethod = 'cash') {
     if (!this.currentSession) {
       throw new Error('No hay sesión de caja abierta');
     }
@@ -201,6 +202,7 @@ class CashService {
       id: `mov_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       sessionId: this.currentSession.id,
       type,
+      paymentMethod,
       amount: value,
       description: description || '',
       date: new Date().toISOString(),
@@ -258,14 +260,51 @@ class CashService {
 
     const opening = movements.find(m => m.type === 'opening');
     const initialAmount = opening ? parseFloat(opening.amount) : parseFloat(session.initialAmount) || 0;
+
+    const methodsMap = {};
+    for (const pm of PAYMENT_METHODS) {
+      methodsMap[pm.id] = { sales: 0, manualIn: 0, manualOut: 0, net: 0 };
+    }
+
+    for (const sale of sessionSales) {
+      const payments = getPayments(sale);
+      for (const p of payments) {
+        if (!methodsMap[p.method]) {
+          methodsMap[p.method] = { sales: 0, manualIn: 0, manualOut: 0, net: 0 };
+        }
+        methodsMap[p.method].sales += p.amount;
+      }
+    }
+
+    for (const m of movements) {
+      if (m.type === 'in' || m.type === 'out') {
+        const method = m.paymentMethod || 'cash';
+        if (!methodsMap[method]) {
+          methodsMap[method] = { sales: 0, manualIn: 0, manualOut: 0, net: 0 };
+        }
+        if (m.type === 'in') {
+          methodsMap[method].manualIn += parseFloat(m.amount);
+        } else {
+          methodsMap[method].manualOut += parseFloat(m.amount);
+        }
+      }
+    }
+
+    for (const id of Object.keys(methodsMap)) {
+      const d = methodsMap[id];
+      d.net = d.sales + d.manualIn - d.manualOut;
+    }
+
     const manualIn = movements.filter(m => m.type === 'in').reduce((s, m) => s + parseFloat(m.amount), 0);
     const manualOut = movements.filter(m => m.type === 'out').reduce((s, m) => s + parseFloat(m.amount), 0);
-    const cashSales = sessionSales.reduce((s, sale) => s + getMethodTotal(sale, 'cash'), 0);
-    const transferSales = sessionSales.reduce((s, sale) => s + getMethodTotal(sale, 'transfer'), 0);
-    const debitSales = sessionSales.reduce((s, sale) => s + getMethodTotal(sale, 'debit'), 0);
-    const accountSales = sessionSales.reduce((s, sale) => s + getMethodTotal(sale, 'account'), 0);
+    const cashSales = methodsMap['cash']?.sales || 0;
+    const transferSales = methodsMap['transfer']?.sales || 0;
+    const debitSales = methodsMap['debit']?.sales || 0;
+    const accountSales = methodsMap['account']?.sales || 0;
     const totalSales = sessionSales.reduce((s, sale) => s + parseFloat(sale.total), 0);
-    const expectedTotal = initialAmount + manualIn - manualOut + cashSales;
+    const cashManualIn = methodsMap['cash']?.manualIn || 0;
+    const cashManualOut = methodsMap['cash']?.manualOut || 0;
+    const expectedTotal = initialAmount + cashManualIn - cashManualOut + cashSales;
 
     return {
       initialAmount,
@@ -277,6 +316,7 @@ class CashService {
       accountSales,
       totalSales,
       expectedTotal,
+      methods: methodsMap,
       session,
       movements,
       salesCount: sessionSales.length

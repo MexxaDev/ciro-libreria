@@ -51,7 +51,19 @@ class Products {
   }
 
   searchBarcode(code) {
-    const product = this.products.find(p => p.barcode && p.barcode === code);
+    const product = this.products.find(p => {
+      if (p.barcode === code) {
+        return true;
+      }
+      if (p.barcodes_extra) {
+        try {
+          return JSON.parse(p.barcodes_extra).includes(code);
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
     if (product) {
       this.render();
       const index = this.products.indexOf(product);
@@ -169,7 +181,16 @@ class Products {
 
     const columns = [
       { key: 'name', label: 'Nombre' },
-      { key: 'price', label: 'Precio', format: val => `$${val}` },
+      {
+        key: 'price',
+        label: 'Precio',
+        format: (val, row) => {
+          if (row.variablePrice) {
+            return `<span style="color:var(--color-text-muted);font-style:italic;">$${val}</span> <span class="badge badge-sm badge-warning">Variable</span>`;
+          }
+          return `$${val}`;
+        }
+      },
       { key: 'stock', label: 'Stock' },
       {
         key: 'categoryId',
@@ -179,7 +200,24 @@ class Products {
           return cat ? cat.name : 'Sin categoría';
         }
       },
-      { key: 'barcode', label: 'Código' }
+      {
+        key: 'barcode',
+        label: 'Código',
+        format: (val, row) => {
+          let html = escapeHtml(val || '');
+          if (row.barcodes_extra) {
+            try {
+              const extras = JSON.parse(row.barcodes_extra);
+              if (extras.length) {
+                html += ` <span class="badge badge-sm badge-secondary">+${extras.length}</span>`;
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+          return html;
+        }
+      }
     ];
 
     const actions = [
@@ -376,6 +414,20 @@ class Products {
       )
       .join('');
 
+    const extraBarcodes =
+      product && product.barcodes_extra
+        ? (() => {
+            try {
+              return JSON.parse(product.barcodes_extra);
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+    const b2 = escapeHtml(extraBarcodes[0] || '');
+    const b3 = escapeHtml(extraBarcodes[1] || '');
+    const b4 = escapeHtml(extraBarcodes[2] || '');
+
     const body = `
       <div class="form-group">
         <label class="form-label" for="prod-name">Nombre</label>
@@ -385,6 +437,15 @@ class Products {
         <div class="form-group">
           <label class="form-label" for="prod-price">Precio</label>
           <input type="number" class="form-input" id="prod-price" value="${product ? product.price : ''}" min="0" step="0.01" required>
+          <div style="margin-top:var(--space-2);">
+            <label class="form-label" style="display:flex;align-items:center;gap:var(--space-2);font-weight:var(--font-normal);cursor:pointer;">
+              <input type="checkbox" id="prod-variable-price" ${product && product.variablePrice ? 'checked' : ''}>
+              Precio variable (se define al vender)
+              <span style="color:var(--color-text-muted);font-size:var(--text-xs);cursor:help;" title="Para productos cuyo precio cambia según el cliente o situación. En el POS el precio será editable.">
+                <i class="fa-solid fa-circle-question"></i>
+              </span>
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label" for="prod-stock">Stock</label>
@@ -400,12 +461,26 @@ class Products {
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div class="form-group">
-          <label class="form-label" for="prod-barcode">Código de barras</label>
+          <label class="form-label" for="prod-barcode">Código de barras principal</label>
           <input type="text" class="form-input" id="prod-barcode" value="${product ? escapeHtml(product.barcode || '') : escapeHtml(prefill.barcode || '')}">
         </div>
         <div class="form-group">
           <label class="form-label" for="prod-sku">SKU</label>
           <input type="text" class="form-input" id="prod-sku" value="${product ? escapeHtml(product.sku || '') : escapeHtml(prefill.sku || '')}">
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="form-group">
+          <label class="form-label" for="prod-barcode2">Código 2</label>
+          <input type="text" class="form-input" id="prod-barcode2" value="${b2}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prod-barcode3">Código 3</label>
+          <input type="text" class="form-input" id="prod-barcode3" value="${b3}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prod-barcode4">Código 4</label>
+          <input type="text" class="form-input" id="prod-barcode4" value="${b4}">
         </div>
       </div>
         <div class="form-group">
@@ -446,9 +521,13 @@ class Products {
       const stock = parseInt(document.getElementById('prod-stock').value);
       const categoryId = document.getElementById('prod-category').value || null;
       const barcode = document.getElementById('prod-barcode').value;
+      const barcode2 = document.getElementById('prod-barcode2').value;
+      const barcode3 = document.getElementById('prod-barcode3').value;
+      const barcode4 = document.getElementById('prod-barcode4').value;
       const sku = document.getElementById('prod-sku').value;
       const visible = document.getElementById('prod-visible').checked;
       const visibleWeb = document.getElementById('prod-visible-web').checked;
+      const variablePrice = document.getElementById('prod-variable-price').checked;
       const priceWeb = document.getElementById('prod-price-web').value;
       const description = document.getElementById('prod-description').value;
       const imageInput = document.getElementById('prod-image');
@@ -458,6 +537,37 @@ class Products {
         Toast.error('Error', errors[0]);
         return;
       }
+
+      const allBarcodes = [barcode, barcode2, barcode3, barcode4].filter(Boolean);
+      if (new Set(allBarcodes).size !== allBarcodes.length) {
+        Toast.error('Error', 'Los códigos de barras ingresados se repiten');
+        return;
+      }
+
+      if (allBarcodes.length) {
+        const conflict = this.products.some(p => {
+          if (isEdit && p.id === product.id) {
+            return false;
+          }
+          if (p.barcode && allBarcodes.includes(p.barcode)) {
+            return true;
+          }
+          if (p.barcodes_extra) {
+            try {
+              return JSON.parse(p.barcodes_extra).some(e => allBarcodes.includes(e));
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        });
+        if (conflict) {
+          Toast.error('Error', 'Uno de los códigos ya está en uso por otro producto');
+          return;
+        }
+      }
+
+      const extras = [barcode2, barcode3, barcode4].filter(Boolean);
 
       let imageData = product ? product.image : '';
       if (imageInput.files && imageInput.files[0]) {
@@ -470,9 +580,11 @@ class Products {
         stock,
         categoryId,
         barcode,
+        barcodes_extra: extras.length ? JSON.stringify(extras) : '',
         sku,
         visible,
         visible_web: visibleWeb,
+        variablePrice: !!variablePrice,
         price_web: priceWeb ? parseFloat(priceWeb) : null,
         description: description || '',
         image: imageData

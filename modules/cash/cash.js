@@ -7,6 +7,7 @@ import Modal from '../../components/modal.js';
 import Toast from '../../components/toast.js';
 import state from '../../js/state.js';
 import { escapeHtml } from '../../utils/sanitizer.js';
+import { PAYMENT_METHODS, getPaymentMethodLabel, loadPaymentMethods } from '../../utils/payments.js';
 import { exportCashToPDF } from '../../utils/pdfExport.js';
 import { logger } from '../../utils/logger.js';
 
@@ -18,6 +19,7 @@ class Cash {
         '<div style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);"><i class="fa-solid fa-spinner fa-spin" style="font-size:32px;margin-bottom:var(--space-3);display:block;"></i>Cargando caja...</div>';
     }
     try {
+      await loadPaymentMethods();
       await cashService.getActiveSession();
       this.render();
     } catch (error) {
@@ -117,14 +119,44 @@ class Cash {
         <div class="cash-summary__divider"></div>`;
     }
     html += `
-      <div class="cash-summary__row"><span>Monto Inicial</span><span>${format(s.initialAmount)}</span></div>
+      <div class="cash-summary__row"><span>Monto Inicial</span><span>${format(s.initialAmount)}</span></div>`;
+
+    const methodsData = s.methods || null;
+    if (methodsData) {
+      for (const pm of PAYMENT_METHODS) {
+        const d = methodsData[pm.id];
+        if (!d) {
+          continue;
+        }
+        const hasSales = d.sales !== 0;
+        const hasManualIn = d.manualIn !== 0;
+        const hasManualOut = d.manualOut !== 0;
+        if (!hasSales && !hasManualIn && !hasManualOut) {
+          continue;
+        }
+
+        if (hasSales) {
+          html += `<div class="cash-summary__row"><span>Ventas ${escapeHtml(pm.label)}</span><span>${format(d.sales)}</span></div>`;
+        }
+        if (hasManualIn) {
+          html += `<div class="cash-summary__row cash-summary__row--sub"><span>Ingreso Manual (${escapeHtml(pm.label)})</span><span style="color:var(--color-success);">+${format(d.manualIn)}</span></div>`;
+        }
+        if (hasManualOut) {
+          html += `<div class="cash-summary__row cash-summary__row--sub"><span>Egreso Manual (${escapeHtml(pm.label)})</span><span style="color:var(--color-danger);">-${format(d.manualOut)}</span></div>`;
+        }
+      }
+    } else {
+      html += `
       <div class="cash-summary__row"><span>Ingresos Manuales</span><span style="color:var(--color-success);">+${format(s.manualIn)}</span></div>
       <div class="cash-summary__row"><span>Egresos Manuales</span><span style="color:var(--color-danger);">-${format(s.manualOut)}</span></div>
       <div class="cash-summary__divider"></div>
       <div class="cash-summary__row"><span>Ventas Efectivo</span><span>${format(s.cashSales)}</span></div>
       <div class="cash-summary__row"><span>Ventas Transferencia</span><span>${format(s.transferSales)}</span></div>
       <div class="cash-summary__row"><span>Ventas Débito</span><span>${format(s.debitSales)}</span></div>
-      <div class="cash-summary__row"><span>Ventas Cuenta Corriente</span><span>${format(s.accountSales)}</span></div>
+      <div class="cash-summary__row"><span>Ventas Cuenta Corriente</span><span>${format(s.accountSales)}</span></div>`;
+    }
+
+    html += `
       <div class="cash-summary__row cash-summary__total"><span>Total Ventas</span><span>${format(s.totalSales)}</span></div>
       <div class="cash-summary__divider"></div>
       <div class="cash-summary__row cash-summary__expected"><span>${expectedLabel}</span><span>${format(s.expectedTotal)}</span></div>`;
@@ -236,11 +268,13 @@ class Cash {
       const typeLabel = labels[m.type] || m.type;
       const typeColor = colors[m.type] || 'var(--color-text)';
       const sign = m.type === 'out' || m.type === 'cancellation' ? '-' : '+';
+      const pmLabel = m.paymentMethod ? getPaymentMethodLabel(m.paymentMethod) : '';
       html += `
         <div class="movement-item">
           <div class="movement-item__info">
             <span class="movement-item__type" style="color:${typeColor};">${typeLabel}</span>
             ${m.description ? `<span class="movement-item__desc">${escapeHtml(m.description)}</span>` : ''}
+            ${pmLabel ? `<span class="movement-item__pm">${escapeHtml(pmLabel)}</span>` : ''}
           </div>
           <div class="movement-item__amount">
             <span class="movement-item__value">${sign}${format(Math.abs(m.amount))}</span>
@@ -352,13 +386,42 @@ class Cash {
           </div>
           <div class="cash-summary__divider"></div>
           <div class="cash-summary__row"><span>Monto Inicial</span><span>${format(closure.initialAmount)}</span></div>
+          ${(() => {
+            const cm = closure.methods;
+            if (cm) {
+              let rows = '';
+              for (const pm of PAYMENT_METHODS) {
+                const d = cm[pm.id];
+                if (!d) {
+                  continue;
+                }
+                const hasSales = d.sales !== 0;
+                const hasManualIn = d.manualIn !== 0;
+                const hasManualOut = d.manualOut !== 0;
+                if (!hasSales && !hasManualIn && !hasManualOut) {
+                  continue;
+                }
+                if (hasSales) {
+                  rows += `<div class="cash-summary__row"><span>Ventas ${escapeHtml(pm.label)}</span><span>${format(d.sales)}</span></div>`;
+                }
+                if (hasManualIn) {
+                  rows += `<div class="cash-summary__row cash-summary__row--sub"><span>Ingreso Manual (${escapeHtml(pm.label)})</span><span style="color:var(--color-success);">+${format(d.manualIn)}</span></div>`;
+                }
+                if (hasManualOut) {
+                  rows += `<div class="cash-summary__row cash-summary__row--sub"><span>Egreso Manual (${escapeHtml(pm.label)})</span><span style="color:var(--color-danger);">-${format(d.manualOut)}</span></div>`;
+                }
+              }
+              return rows || '<div class="cash-summary__row"><span>Sin movimientos</span><span>$0.00</span></div>';
+            }
+            return `
           <div class="cash-summary__row"><span>Ingresos Manuales</span><span style="color:var(--color-success);">+${format(closure.manualIn)}</span></div>
           <div class="cash-summary__row"><span>Egresos Manuales</span><span style="color:var(--color-danger);">-${format(closure.manualOut)}</span></div>
           <div class="cash-summary__divider"></div>
           <div class="cash-summary__row"><span>Ventas Efectivo</span><span>${format(closure.cashSales)}</span></div>
           <div class="cash-summary__row"><span>Ventas Transferencia</span><span>${format(closure.transferSales)}</span></div>
           <div class="cash-summary__row"><span>Ventas Débito</span><span>${format(closure.debitSales)}</span></div>
-          <div class="cash-summary__row"><span>Ventas Cuenta Corriente</span><span>${format(closure.accountSales)}</span></div>
+          <div class="cash-summary__row"><span>Ventas Cuenta Corriente</span><span>${format(closure.accountSales)}</span></div>`;
+          })()}
           <div class="cash-summary__row cash-summary__total"><span>Total Ventas</span><span>${format(closure.totalSales)}</span></div>
           <div class="cash-summary__divider"></div>
           <div class="cash-summary__row cash-summary__expected"><span>Efectivo Esperado</span><span>${format(closure.expectedTotal)}</span></div>
@@ -583,10 +646,18 @@ class Cash {
 
   addMovement(type) {
     const typeLabel = type === 'in' ? 'Ingreso' : 'Egreso';
+    const paymentOptions = PAYMENT_METHODS.map(
+      pm => `<option value="${pm.id}" ${pm.id === 'cash' ? 'selected' : ''}>${escapeHtml(pm.label)}</option>`
+    ).join('');
+
     const body = `
       <div class="form-group">
         <label class="form-label">Monto</label>
         <input type="number" class="form-input" id="movement-amount" min="0" step="0.01" placeholder="0.00" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Medio de Pago</label>
+        <select class="form-input" id="movement-payment-method">${paymentOptions}</select>
       </div>
       <div class="form-group">
         <label class="form-label">Observación <span style="color:var(--color-text-muted);font-weight:var(--font-normal);">(opcional)</span></label>
@@ -606,12 +677,13 @@ class Cash {
     document.getElementById('mov-confirm')?.addEventListener('click', async () => {
       const amount = document.getElementById('movement-amount')?.value;
       const description = document.getElementById('movement-desc')?.value || '';
+      const paymentMethod = document.getElementById('movement-payment-method')?.value || 'cash';
       if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
         Toast.error('Error', 'Ingresá un monto válido');
         return;
       }
       try {
-        await cashService.addMovement(type, amount, description);
+        await cashService.addMovement(type, amount, description, paymentMethod);
         Toast.success('Éxito', `${typeLabel} registrado correctamente`);
         Modal.close();
         this.render();
@@ -664,10 +736,17 @@ class Cash {
           '<div style="text-align:center;padding:var(--space-4);"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;"></i><p style="margin-top:var(--space-2);">Cargando resumen...</p></div>';
         this._loadQuickCloseSummary(dynamic);
       } else {
+        const paymentOptions = PAYMENT_METHODS.map(
+          pm => `<option value="${pm.id}" ${pm.id === 'cash' ? 'selected' : ''}>${escapeHtml(pm.label)}</option>`
+        ).join('');
         dynamic.innerHTML = `
           <div class="form-group">
             <label class="form-label">Monto</label>
             <input type="number" class="form-input" id="cash-op-amount" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Medio de Pago</label>
+            <select class="form-input" id="cash-op-payment-method">${paymentOptions}</select>
           </div>
           <div class="form-group">
             <label class="form-label">Observación <span style="color:var(--color-text-muted);font-weight:var(--font-normal);">(opcional)</span></label>
@@ -685,12 +764,13 @@ class Cash {
       }
       const amount = document.getElementById('cash-op-amount')?.value;
       const obs = document.getElementById('cash-op-obs')?.value || '';
+      const paymentMethod = document.getElementById('cash-op-payment-method')?.value || 'cash';
       if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
         Toast.error('Error', 'Ingresá un monto válido');
         return;
       }
       try {
-        await cashService.addMovement(type, amount, obs);
+        await cashService.addMovement(type, amount, obs, paymentMethod);
         const label = type === 'in' ? 'Ingreso' : 'Egreso';
         Toast.success('Éxito', `${label} registrado correctamente`);
         Modal.close();

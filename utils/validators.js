@@ -29,8 +29,11 @@ export function validateProduct(product) {
   if (!required(product.name)) {
     errors.push('El nombre es obligatorio');
   }
-  if (!isPositive(product.price)) {
+  if (!product.variablePrice && !isPositive(product.price)) {
     errors.push('El precio debe ser mayor a 0');
+  }
+  if (product.variablePrice && !isNumber(product.price)) {
+    errors.push('El precio debe ser un número válido');
   }
   if (!isInteger(product.stock)) {
     errors.push('El stock debe ser un número entero');

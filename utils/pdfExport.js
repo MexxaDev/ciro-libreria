@@ -1,7 +1,7 @@
 'use strict';
 
 import { format } from './currency.js';
-import { getPaymentMethodLabel } from './payments.js';
+import { getPaymentMethodLabel, PAYMENT_METHODS } from './payments.js';
 import { BRAND } from '../config/brandConfig.js';
 
 const MOVEMENT_LABELS = {
@@ -91,17 +91,44 @@ export async function exportCashToPDF(summary, movements, settings) {
   doc.text('RESUMEN ECONÓMICO', margin, y);
   y += 7;
 
-  const summaryRows = [
-    ['Monto Inicial', format(summary.initialAmount)],
-    ['Ingresos Manuales', `+ ${format(summary.manualIn)}`],
-    ['Egresos Manuales', `- ${format(summary.manualOut)}`],
-    ['Ventas Efectivo', format(summary.cashSales)],
-    ['Ventas Transferencia', format(summary.transferSales)],
-    ['Ventas Débito', format(summary.debitSales)],
-    ['Ventas Cuenta Corriente', format(summary.accountSales)],
-    ['Total Ventas', format(summary.totalSales)],
-    ['Efectivo Esperado', format(summary.expectedTotal)]
-  ];
+  const summaryRows = [['Monto Inicial', format(summary.initialAmount)]];
+
+  const methodsData = summary.methods || null;
+  if (methodsData) {
+    for (const pm of PAYMENT_METHODS) {
+      const d = methodsData[pm.id];
+      if (!d) {
+        continue;
+      }
+      const hasSales = d.sales !== 0;
+      const hasManualIn = d.manualIn !== 0;
+      const hasManualOut = d.manualOut !== 0;
+      if (!hasSales && !hasManualIn && !hasManualOut) {
+        continue;
+      }
+
+      if (hasSales) {
+        summaryRows.push([`Ventas ${pm.label}`, format(d.sales)]);
+      }
+      if (hasManualIn) {
+        summaryRows.push([`Ingreso Manual (${pm.label})`, `+ ${format(d.manualIn)}`]);
+      }
+      if (hasManualOut) {
+        summaryRows.push([`Egreso Manual (${pm.label})`, `- ${format(d.manualOut)}`]);
+      }
+    }
+  } else {
+    summaryRows.push(
+      ['Ingresos Manuales', `+ ${format(summary.manualIn)}`],
+      ['Egresos Manuales', `- ${format(summary.manualOut)}`],
+      ['Ventas Efectivo', format(summary.cashSales)],
+      ['Ventas Transferencia', format(summary.transferSales)],
+      ['Ventas Débito', format(summary.debitSales)],
+      ['Ventas Cuenta Corriente', format(summary.accountSales)]
+    );
+  }
+
+  summaryRows.push(['Total Ventas', format(summary.totalSales)], ['Efectivo Esperado', format(summary.expectedTotal)]);
 
   doc.autoTable({
     startY: y,

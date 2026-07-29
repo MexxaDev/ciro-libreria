@@ -280,7 +280,19 @@ class POS {
 
   async searchBarcode(code) {
     const barcodeInput = document.getElementById('pos-barcode-input');
-    let product = this.products.find(p => (p.barcode && p.barcode === code) || p.id === code);
+    let product = this.products.find(p => {
+      if (p.barcode === code || p.id === code) {
+        return true;
+      }
+      if (p.barcodes_extra) {
+        try {
+          return JSON.parse(p.barcodes_extra).includes(code);
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
 
     if (!product) {
       product = this.products.find(p => p.sku && p.sku === code);
@@ -290,9 +302,18 @@ class POS {
 
     if (!product) {
       for (const p of this.products) {
-        const barcode = p.barcode || p.sku || p.id;
-        if (barcode && code.endsWith(barcode) && code.length > barcode.length) {
-          const prefix = code.slice(0, code.length - barcode.length);
+        const candidates = [p.barcode];
+        if (p.barcodes_extra) {
+          try {
+            candidates.push(...JSON.parse(p.barcodes_extra));
+          } catch {
+            /* ignore */
+          }
+        }
+        candidates.push(p.sku, p.id);
+        const matched = candidates.find(c => c && code.endsWith(c) && code.length > c.length);
+        if (matched) {
+          const prefix = code.slice(0, code.length - matched.length);
           const parsed = parseInt(prefix, 10);
           if (!isNaN(parsed) && parsed > 0 && String(parsed) === prefix) {
             product = p;
@@ -330,7 +351,22 @@ class POS {
 
     let products = this.products;
     if (query) {
-      products = products.filter(p => p.name.toLowerCase().includes(query) || (p.barcode && p.barcode.includes(query)));
+      products = products.filter(p => {
+        if (p.name.toLowerCase().includes(query)) {
+          return true;
+        }
+        if (p.barcode && p.barcode.includes(query)) {
+          return true;
+        }
+        if (p.barcodes_extra) {
+          try {
+            return JSON.parse(p.barcodes_extra).some(e => e.includes(query));
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      });
     }
     if (this.currentCategory) {
       products = products.filter(p => p.categoryId === this.currentCategory);
@@ -392,21 +428,20 @@ class POS {
       return;
     }
 
-    if (product.stock <= 0) {
+    if (!product.variablePrice && product.stock <= 0) {
       Toast.error('Sin stock', `${product.name} no tiene stock disponible`);
       return;
     }
 
     const existing = this.cart.find(item => item.id === productId);
     if (existing) {
-      const newQty = existing.quantity + quantity;
-      if (newQty > product.stock) {
+      if (!product.variablePrice && existing.quantity + quantity > product.stock) {
         Toast.error('Sin stock', `${product.name} solo tiene ${product.stock} unidades`);
         return;
       }
-      existing.quantity = newQty;
+      existing.quantity += quantity;
     } else {
-      if (quantity > product.stock) {
+      if (!product.variablePrice && quantity > product.stock) {
         Toast.error('Sin stock', `${product.name} solo tiene ${product.stock} unidades`);
         return;
       }
@@ -441,7 +476,11 @@ class POS {
           </div>
           <div class="pos-cart-item__info">
             <div class="pos-cart-item__name">${escapeHtml(item.name)}</div>
-            <div class="pos-cart-item__price">${format(item.price)} x <input type="number" class="pos-cart-item__qty-input" value="${item.quantity}" min="1" max="${item.stock || 999}" data-index="${index}"></div>
+            <div class="pos-cart-item__price">${
+              item.variablePrice
+                ? `$ <input type="number" class="pos-cart-item__price-input" value="${item.price}" min="0" step="0.01" data-index="${index}"> x ${item.quantity}`
+                : `${format(item.price)} x <input type="number" class="pos-cart-item__qty-input" value="${item.quantity}" min="1" max="${item.stock || 999}" data-index="${index}">`
+            }</div>
           </div>
           <div class="pos-cart-item__actions">
             <button class="pos-cart-item__btn pos-cart-item__btn--remove" data-index="${index}">&minus;</button>
@@ -493,6 +532,20 @@ class POS {
           val = this.cart[idx].stock;
         }
         this.cart[idx].quantity = val;
+        this.renderCart();
+      });
+      inp.addEventListener('focus', () => inp.select());
+    });
+
+    container.querySelectorAll('.pos-cart-item__price-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const idx = parseInt(inp.dataset.index);
+        const val = parseFloat(inp.value);
+        if (isNaN(val) || val < 0) {
+          inp.value = this.cart[idx].price;
+          return;
+        }
+        this.cart[idx].price = val;
         this.renderCart();
       });
       inp.addEventListener('focus', () => inp.select());
@@ -576,9 +629,27 @@ class POS {
     }
 
     if (this.currentCustomer) {
-      infoContainer.innerHTML = `Saldo: <strong>${format(this.currentCustomer.balance || 0)}</strong>`;
+      const balance = this.currentCustomer.balance || 0;
+      const isDebt = balance > 0;
+      const creditLimitEnabled = this.settings.creditLimitEnabled !== 'false';
+      const creditLimit = parseFloat(this.settings.creditLimit) || 0;
+      const isOverLimit = creditLimitEnabled && creditLimit > 0 && balance >= creditLimit;
+      const color = isDebt ? 'var(--color-danger)' : 'var(--color-success)';
+      const label = isDebt ? 'Deuda' : 'Saldo a favor';
+      const warningBadge = isOverLimit ? ' <span class="badge badge-warning">⚠️ Límite alcanzado</span>' : '';
+
+      infoContainer.innerHTML = `${label}: <strong style="color:${color};">${format(balance)}</strong>${warningBadge}`;
+
+      if (isOverLimit && this._lastWarnedCustomer !== this.currentCustomer.id) {
+        this._lastWarnedCustomer = this.currentCustomer.id;
+        Toast.warning(
+          'Límite de crédito',
+          `${this.currentCustomer.name} superó el límite de crédito (${format(creditLimit)})`
+        );
+      }
     } else {
       infoContainer.innerHTML = '';
+      this._lastWarnedCustomer = null;
     }
   }
 
@@ -912,10 +983,6 @@ class POS {
       if (!this.currentCustomer) {
         return 'account_no_customer';
       }
-      const balance = this.currentCustomer.balance || 0;
-      if (balance < accountPayment.amount) {
-        return 'account_insufficient';
-      }
     }
 
     for (const item of this.cart) {
@@ -1010,7 +1077,7 @@ class POS {
           });
 
           const product = this.products.find(p => p.id === item.productId);
-          if (product) {
+          if (product && !product.variablePrice) {
             product.stock -= item.quantity;
             stockUpdates.push(product);
             await productRepo.update(product);
@@ -1021,7 +1088,7 @@ class POS {
         if (accountPayment && accountPayment.amount > 0 && this.currentCustomer) {
           previousBalance = this.currentCustomer.balance;
           previousBalanceCustomer = this.currentCustomer;
-          this.currentCustomer.balance = (this.currentCustomer.balance || 0) - accountPayment.amount;
+          this.currentCustomer.balance = (this.currentCustomer.balance || 0) + accountPayment.amount;
           await customerRepo.update(this.currentCustomer);
         }
 

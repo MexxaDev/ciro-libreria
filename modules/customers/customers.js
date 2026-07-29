@@ -103,10 +103,10 @@ class Customers {
           <td>${escapeHtml(customer.name)}${isDefault ? ' <span class="badge badge-info" style="font-size:0.7em;">Sistema</span>' : ''}</td>
           <td>${escapeHtml(customer.phone || '-')}</td>
           <td>${escapeHtml(customer.address || '-')}</td>
-          <td style="font-weight:var(--font-semibold);">${format(saldo)}</td>
+          <td style="font-weight:var(--font-semibold);${saldo > 0 ? 'color:var(--color-danger);' : ''}">${format(saldo)}</td>
           <td>
             <div class="flex gap-2">
-              ${!isDefault ? `<button class="btn btn-sm btn-ghost" data-action="add-balance" data-index="${index}">+ Saldo</button>` : ''}
+              ${!isDefault ? `<button class="btn btn-sm btn-ghost" data-action="pay-balance" data-index="${index}"><i class="fa-solid fa-credit-card"></i> Pagar</button>` : ''}
               ${!isDefault ? `<button class="btn btn-sm btn-ghost" data-action="edit" data-index="${index}">Editar</button>` : ''}
               ${!isDefault ? `<button class="btn btn-sm btn-danger" data-action="delete" data-index="${index}">Eliminar</button>` : ''}
             </div>
@@ -177,8 +177,8 @@ class Customers {
           this.openModal(customer);
         } else if (action === 'delete') {
           this.deleteCustomer(customer.id);
-        } else if (action === 'add-balance') {
-          this.openAddBalance(customer);
+        } else if (action === 'pay-balance') {
+          this.openPayBalance(customer);
         }
       });
     });
@@ -267,24 +267,25 @@ class Customers {
     });
   }
 
-  openAddBalance(customer) {
+  openPayBalance(customer) {
+    const currentBalance = customer.balance || 0;
     const body = `
       <div style="margin-bottom:var(--space-3);">
         <strong>${customer.name}</strong><br>
-        <span style="color:var(--color-text-secondary);font-size:var(--text-sm);">Saldo actual: ${format(customer.balance || 0)}</span>
+        <span style="color:var(--color-text-secondary);font-size:var(--text-sm);">Deuda actual: ${format(currentBalance)}</span>
       </div>
       <div class="form-group">
-        <label class="form-label" for="balance-amount">Monto a agregar</label>
-        <input type="number" class="form-input" id="balance-amount" min="0" step="0.01" placeholder="0.00">
+        <label class="form-label" for="balance-amount">Monto a pagar</label>
+        <input type="number" class="form-input" id="balance-amount" min="0" step="0.01" placeholder="0.00" max="${currentBalance}">
       </div>
     `;
 
     const footer = `
       <button class="btn btn-secondary" id="bal-cancel">Cancelar</button>
-      <button class="btn btn-primary" id="bal-save">Agregar</button>
+      <button class="btn btn-primary" id="bal-save">Pagar</button>
     `;
 
-    Modal.show({ title: 'Agregar Saldo', body, footer });
+    Modal.show({ title: 'Registrar pago', body, footer });
 
     document.getElementById('bal-cancel').addEventListener('click', () => Modal.close());
 
@@ -296,15 +297,15 @@ class Customers {
       }
 
       try {
-        const newBalance = (customer.balance || 0) + amount;
+        const newBalance = Math.max(0, currentBalance - amount);
         await customerRepo.update({ ...customer, balance: newBalance });
         customer.balance = newBalance;
-        Toast.success('Éxito', `Se agregaron ${format(amount)} al saldo`);
+        Toast.success('Éxito', `Pago registrado: ${format(amount)}`);
         Modal.close();
         state.emit('data:customers-changed');
         this.load();
       } catch (error) {
-        Toast.error('Error', 'No se pudo actualizar el saldo');
+        Toast.error('Error', 'No se pudo registrar el pago');
       }
     });
   }

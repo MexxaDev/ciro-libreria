@@ -63,6 +63,9 @@ class Settings {
     const shopMinDelivery = escapeHtml(this.settings.shop_min_delivery || '0');
     const shopDeliveryCost = escapeHtml(this.settings.shop_delivery_cost || '0');
 
+    const creditLimitEnabled = this.settings.creditLimitEnabled !== 'false';
+    const creditLimit = escapeHtml(this.settings.creditLimit || '250000');
+
     container.innerHTML = `
       <div class="page-header">
         <h1 class="page-header__title">Configuración</h1>
@@ -134,6 +137,28 @@ class Settings {
           <div class="form-group">
             <label class="form-label">Porcentaje de IVA (%)</label>
             <input type="number" class="form-input" id="setting-taxRate" value="${taxRate}" min="0" max="100" step="0.1" style="width:120px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-section__title">Límite de Crédito</h3>
+        <div class="settings-section__desc">Configuración del tope de deuda para Cuenta Corriente</div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;">
+            <input type="checkbox" id="setting-credit-limit-enabled" ${creditLimitEnabled ? 'checked' : ''}>
+            <span class="form-label" style="margin:0;">Habilitar notificación de límite de crédito</span>
+          </label>
+          <p style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-top:var(--space-1);">
+            Si está activo, se mostrará una advertencia cuando un cliente supere el tope
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="form-group">
+            <label class="form-label">Tope de crédito ($)</label>
+            <input type="number" class="form-input" id="setting-credit-limit" value="${creditLimit}" min="0" step="0.01" style="width:140px;">
           </div>
         </div>
       </div>
@@ -818,7 +843,12 @@ class Settings {
       { key: 'shop_min_delivery', value: document.getElementById('setting-shop-min-delivery')?.value || '0' },
       { key: 'shop_delivery_cost', value: document.getElementById('setting-shop-delivery-cost')?.value || '0' },
       { key: 'shop_banner', value: document.getElementById('setting-shop-banner')?.value || '' },
-      { key: 'theme', value: document.getElementById('setting-theme')?.checked || false ? 'dark' : 'light' }
+      { key: 'theme', value: document.getElementById('setting-theme')?.checked || false ? 'dark' : 'light' },
+      {
+        key: 'creditLimitEnabled',
+        value: (document.getElementById('setting-credit-limit-enabled')?.checked || false).toString()
+      },
+      { key: 'creditLimit', value: document.getElementById('setting-credit-limit')?.value || '250000' }
     ];
 
     try {
@@ -868,7 +898,9 @@ class Settings {
       { key: 'shop_min_delivery', value: '0' },
       { key: 'shop_delivery_cost', value: '0' },
       { key: 'shop_banner', value: '' },
-      { key: 'theme', value: 'light' }
+      { key: 'theme', value: 'light' },
+      { key: 'creditLimitEnabled', value: 'false' },
+      { key: 'creditLimit', value: '250000' }
     ];
 
     try {

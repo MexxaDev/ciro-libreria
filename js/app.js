@@ -484,7 +484,9 @@ async function loadSettings() {
     { key: 'currency', value: 'ARS' },
     { key: 'currencySymbol', value: '$' },
     { key: 'ticketFooter', value: 'Gracias por su compra!' },
-    { key: 'logo', value: '' }
+    { key: 'logo', value: '' },
+    { key: 'creditLimitEnabled', value: 'false' },
+    { key: 'creditLimit', value: '250000' }
   ];
 
   try {

@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Syntra POS - Sistema de Gestion</title>
+    <meta name="description" content="Sistema de gestión POS Syntra para tu negocio" />
+    <meta property="og:title" content="Syntra POS - Sistema de Gestión" />
+    <meta property="og:description" content="Gestioná tu negocio con el sistema más moderno" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#7C3AED" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+    <link rel="apple-touch-icon" href="icons/favicon.svg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/pages.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/shop.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
+  <body>
+    <a
+      href="#main-content"
+      class="skip-link"
+      style="
+        position: absolute;
+        left: -9999px;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        z-index: 9999;
+        padding: 8px 16px;
+        background: var(--color-primary);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+      "
+      >Saltar al contenido principal</a
+    >
+
+    <noscript>
+      <div style="padding: 40px; text-align: center; font-family: sans-serif; color: #333">
+        <h1>Syntra POS requiere JavaScript</h1>
+        <p>Por favor habilitá JavaScript en tu navegador para usar el sistema.</p>
+      </div>
+    </noscript>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container" role="main"></div>
+
+    <!-- Main App -->
+    <div id="app" class="app" style="display: none">
+      <aside id="sidebar" class="sidebar" role="navigation" aria-label="Menú principal"></aside>
+      <header id="header" class="header" role="banner"></header>
+
+      <main id="main-content" class="main-content" role="main">
+        <!-- Dashboard -->
+        <section id="dashboard" class="content-section active">
+          <div id="dashboard-content"></div>
+        </section>
+
+        <!-- POS -->
+        <section id="pos" class="content-section">
+          <!-- page-header hidden for cleaner POS layout -->
+          <div class="pos-layout">
+            <div class="pos-products">
+              <div class="pos-search-bar">
+                <input
+                  type="text"
+                  class="form-input"
+                  placeholder="Buscar productos..."
+                  id="pos-search-input"
+                  aria-label="Buscar productos"
+                />
+                <input
+                  type="text"
+                  class="form-input"
+                  placeholder="Escanear código..."
+                  id="pos-barcode-input"
+                  autofocus
+                  aria-label="Escanear código de barras"
+                />
+              </div>
+              <div class="pos-product-grid" id="pos-product-list">
+                <p class="pos-cart-empty" style="padding: var(--space-4)">Cargando productos...</p>
+              </div>
+            </div>
+            <div class="pos-cart">
+              <div class="pos-cart-header">
+                <span class="pos-cart-title">Carrito de Venta</span>
+                <span class="pos-cart-count" id="cart-count"></span>
+              </div>
+              <div id="customer-section">
+                <div class="pos-customer-row">
+                  <select id="pos-customer-select" aria-label="Seleccionar cliente"></select>
+                </div>
+                <div id="customer-info"></div>
+              </div>
+              <div id="pos-order-type-container"></div>
+              <div class="pos-cart-items" id="cart-items">
+                <div class="pos-cart-empty">
+                  <i class="fa-solid fa-cart-shopping"></i>
+                  El carrito esta vacio
+                </div>
+              </div>
+              <div class="pos-cart-footer">
+                <div class="pos-total-row">
+                  <span>Subtotal:</span>
+                  <span class="pos-total-value" id="cart-subtotal">$0.00</span>
+                </div>
+                <div class="pos-discount-row">
+                  <span class="pos-discount-label">Descuento:</span>
+                  <select id="discount-type" aria-label="Tipo de descuento">
+                    <option value="percent">%</option>
+                    <option value="fixed">$</option>
+                  </select>
+                  <input
+                    type="number"
+                    id="discount-value"
+                    placeholder="0"
+                    min="0"
+                    step="0.01"
+                    aria-label="Valor del descuento"
+                  />
+                  <span class="pos-discount-amount" id="cart-discount">-$0.00</span>
+                </div>
+                <div class="pos-total-row" id="pos-tax-row" style="display: none">
+                  <span>IVA (<span id="cart-tax-rate"></span>%):</span>
+                  <span class="pos-total-value" id="cart-tax">$0.00</span>
+                </div>
+                <div class="pos-total-row pos-total-row--final">
+                  <span>Total:</span>
+                  <span class="pos-total-value" id="cart-total">$0.00</span>
+                </div>
+
+                <div id="payment-ui-container"></div>
+
+                <button class="pos-confirm-btn" id="confirm-sale-btn">Confirmar Venta</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Products -->
+        <section id="products" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Productos</h1>
+            <p class="page-header__subtitle">Gestiona tu catalogo</p>
+          </div>
+          <div class="products-toolbar">
+            <div class="products-search">
+              <input
+                type="text"
+                class="form-input"
+                placeholder="Buscar por código de barras..."
+                id="product-barcode-search"
+                aria-label="Buscar por código de barras"
+              />
+            </div>
+            <button class="btn btn-primary" id="add-product-btn">+ Nuevo Producto</button>
+          </div>
+          <div id="product-list">
+            <p style="color: var(--color-text-secondary)">Cargando productos...</p>
+          </div>
+        </section>
+
+        <!-- Categories -->
+        <section id="categories" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Categorias</h1>
+            <p class="page-header__subtitle">Organiza tus productos</p>
+          </div>
+          <div class="products-toolbar">
+            <button class="btn btn-primary" id="add-category-btn">+ Nueva Categoria</button>
+          </div>
+          <div id="categories-list">
+            <p style="color: var(--color-text-secondary)">Cargando categorias...</p>
+          </div>
+        </section>
+
+        <!-- Customers -->
+        <section id="customers" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Clientes</h1>
+            <p class="page-header__subtitle">Administra tus clientes</p>
+          </div>
+          <div id="customers-content">
+            <p style="color: var(--color-text-secondary)">Cargando clientes...</p>
+          </div>
+        </section>
+
+        <!-- Sales -->
+        <section id="sales" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Ventas</h1>
+            <p class="page-header__subtitle">Historial de ventas</p>
+          </div>
+          <div class="products-toolbar" id="sales-filter-bar">
+            <div style="display: flex; gap: var(--space-2); flex-wrap: wrap">
+              <input
+                type="date"
+                class="form-input"
+                id="sales-date-from"
+                style="width: 150px"
+                aria-label="Fecha desde"
+              />
+              <input type="date" class="form-input" id="sales-date-to" style="width: 150px" aria-label="Fecha hasta" />
+              <select class="form-input" id="sales-customer-filter" style="width: 180px" aria-label="Cliente">
+                <option value="">Todos los clientes</option>
+              </select>
+              <select class="form-input" id="sales-payment-filter" style="width: 160px" aria-label="Método de pago">
+                <option value="">Todos los métodos</option>
+                <option value="cash">Efectivo</option>
+                <option value="transfer">Transferencia</option>
+                <option value="debit">Débito</option>
+                <option value="account">Cuenta Corriente</option>
+              </select>
+              <input
+                type="number"
+                class="form-input"
+                id="sales-amount-min"
+                style="width: 120px"
+                placeholder="Monto min"
+                aria-label="Monto mínimo"
+                min="0"
+                step="0.01"
+              />
+              <input
+                type="number"
+                class="form-input"
+                id="sales-amount-max"
+                style="width: 120px"
+                placeholder="Monto max"
+                aria-label="Monto máximo"
+                min="0"
+                step="0.01"
+              />
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: var(--space-1);
+                  cursor: pointer;
+                  font-size: var(--text-sm);
+                  white-space: nowrap;
+                "
+              >
+                <input type="checkbox" id="sales-include-cancelled" /> Incluir canceladas
+              </label>
+              <button class="btn btn-primary" id="sales-filter-btn">Filtrar</button>
+              <button class="btn btn-ghost" id="sales-clear-filters-btn">Limpiar</button>
+            </div>
+          </div>
+          <div id="sales-list">
+            <p style="color: var(--color-text-secondary)">Cargando ventas...</p>
+          </div>
+        </section>
+
+        <!-- Cash -->
+        <section id="cash" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Caja</h1>
+            <p class="page-header__subtitle">Apertura y cierre de caja</p>
+          </div>
+          <div id="cash-content">
+            <p style="color: var(--color-text-secondary)">Cargando modulo de caja...</p>
+          </div>
+        </section>
+
+        <!-- Reports -->
+        <section id="reports" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Reportes</h1>
+            <p class="page-header__subtitle">Analisis de ventas</p>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Configuracion</h1>
+            <p class="page-header__subtitle">Ajustes del sistema</p>
+          </div>
+        </section>
+
+        <!-- Users -->
+        <section id="users" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Usuarios</h1>
+            <p class="page-header__subtitle">Gestionar cuentas de acceso</p>
+          </div>
+          <div id="users-content"></div>
+        </section>
+
+        <!-- Payment Methods -->
+        <section id="payment-methods" class="content-section">
+          <div class="page-header">
+            <h1 class="page-header__title">Medios de Pago</h1>
+            <p class="page-header__subtitle">Administra los métodos de pago disponibles</p>
+          </div>
+          <div id="payment-methods-content">
+            <p style="color: var(--color-text-secondary)">Cargando medios de pago...</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Shop Public Module -->
+    <div id="shop-container" class="shop-container-wrapper" style="display: none">
+      <div id="shop-content"></div>
+      <div id="shop-modal" class="shop-modal">
+        <div id="shop-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

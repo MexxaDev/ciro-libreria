@@ -1,0 +1,21 @@
+{
+  "name": "Syntra POS",
+  "short_name": "Syntra",
+  "description": "Sistema de gestión POS Syntra para tu negocio",
+  "id": "/",
+  "scope": "/",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#7C3AED",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

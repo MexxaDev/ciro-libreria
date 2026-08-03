@@ -8,6 +8,7 @@ import state from '../../js/state.js';
 import { escapeHtml } from '../../utils/sanitizer.js';
 import backupManager from '../../services/backupManager.js';
 import { logger } from '../../utils/logger.js';
+import { BRAND } from '../../config/brandConfig.js';
 import {
   testConnection,
   loadGitHubConfig,
@@ -49,6 +50,7 @@ class Settings {
     const currency = escapeHtml(this.settings.currency || 'ARS');
     const currencySymbol = escapeHtml(this.settings.currencySymbol || '$');
     const businessName = escapeHtml(this.settings.businessName || '');
+    const address = escapeHtml(this.settings.address || '');
     const ticketFooter = escapeHtml(this.settings.ticketFooter || '');
 
     const taxEnabled = this.settings.taxEnabled !== 'false';
@@ -95,6 +97,10 @@ class Settings {
           <div class="form-group">
             <label class="form-label">Símbolo de Moneda</label>
             <input type="text" class="form-input" id="setting-currencySymbol" value="${currencySymbol}" maxlength="5" style="width:80px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dirección</label>
+            <input type="text" class="form-input" id="setting-address" value="${address}" placeholder="Calle 123, Ciudad">
           </div>
         </div>
 
@@ -187,7 +193,7 @@ class Settings {
           </div>
           <div class="form-group">
             <label class="form-label">Color Primario</label>
-            <input type="color" class="form-input" id="setting-shop-color" value="${this.settings.shop_primary_color || '#7C3AED'}">
+            <input type="color" class="form-input" id="setting-shop-color" value="${this.settings.shop_primary_color || '#0EA5E9'}">
           </div>
         </div>
 
@@ -821,6 +827,7 @@ class Settings {
   async save() {
     const settings = [
       { key: 'businessName', value: document.getElementById('setting-businessName')?.value || '' },
+      { key: 'address', value: document.getElementById('setting-address')?.value || '' },
       { key: 'currency', value: document.getElementById('setting-currency')?.value || 'ARS' },
       { key: 'currencySymbol', value: document.getElementById('setting-currencySymbol')?.value || '$' },
       { key: 'ticketFooter', value: document.getElementById('setting-ticketFooter')?.value || '' },
@@ -829,7 +836,7 @@ class Settings {
       { key: 'taxRate', value: document.getElementById('setting-taxRate')?.value || '21' },
       { key: 'shop_enabled', value: (document.getElementById('setting-shop-enabled')?.checked || false).toString() },
       { key: 'shop_whatsapp', value: document.getElementById('setting-shop-whatsapp')?.value || '' },
-      { key: 'shop_primary_color', value: document.getElementById('setting-shop-color')?.value || '#7C3AED' },
+      { key: 'shop_primary_color', value: document.getElementById('setting-shop-color')?.value || '#0EA5E9' },
       { key: 'shop_hours_open', value: document.getElementById('setting-shop-open')?.value || '09:00' },
       { key: 'shop_hours_close', value: document.getElementById('setting-shop-close')?.value || '23:00' },
       {
@@ -881,16 +888,16 @@ class Settings {
 
   async resetToDefaults() {
     const defaults = [
-      { key: 'businessName', value: 'Mi Negocio' },
+      { key: 'businessName', value: BRAND.name },
       { key: 'currency', value: 'ARS' },
       { key: 'currencySymbol', value: '$' },
-      { key: 'ticketFooter', value: 'Gracias por su compra!' },
+      { key: 'ticketFooter', value: BRAND.defaultTicketFooter },
       { key: 'logo', value: '' },
       { key: 'taxEnabled', value: 'true' },
       { key: 'taxRate', value: '21' },
       { key: 'shop_enabled', value: 'false' },
       { key: 'shop_whatsapp', value: '' },
-      { key: 'shop_primary_color', value: '#7C3AED' },
+      { key: 'shop_primary_color', value: '#0EA5E9' },
       { key: 'shop_hours_open', value: '09:00' },
       { key: 'shop_hours_close', value: '23:00' },
       { key: 'shop_takeaway_enabled', value: 'true' },

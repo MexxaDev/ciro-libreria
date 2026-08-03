@@ -7,6 +7,7 @@ import ShopCheckout from './shopCheckout.js';
 import { logger } from '../../utils/logger.js';
 import { escapeHtml } from '../../utils/sanitizer.js';
 import state from '../../js/state.js';
+import { BRAND } from '../../config/brandConfig.js';
 
 class Shop {
   constructor() {
@@ -130,7 +131,7 @@ class Shop {
   }
 
   updateSEO() {
-    const businessName = this.settings.businessName || 'Mi Negocio';
+    const businessName = this.settings.businessName || BRAND.name;
 
     document.title = `${businessName} - Shop`;
 
@@ -173,7 +174,7 @@ class Shop {
       return;
     }
 
-    const businessName = this.settings.businessName || 'Mi Negocio';
+    const businessName = this.settings.businessName || BRAND.name;
 
     container.innerHTML = `
       ${ShopUI.renderHomeHeader(businessName, this.settings)}

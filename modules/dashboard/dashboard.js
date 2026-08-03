@@ -550,7 +550,7 @@ class Dashboard {
     const data = getSalesByPeriod(sales, days);
     const labels = getPeriodLabels(days);
 
-    drawBarLineChart(ctx, labels, data, 'Ventas', ['#7C3AED', '#C4B5FD'], this.currencySymbol);
+    drawBarLineChart(ctx, labels, data, 'Ventas', ['#0EA5E9', '#22D3EE'], this.currencySymbol);
   }
 
   initWeekComparisonChart(sales, currencySymbol) {
@@ -597,7 +597,7 @@ class Dashboard {
         { label: 'Esta semana', data: dataThisWeek },
         { label: 'Semana pasada', data: dataLastWeek }
       ],
-      ['#7C3AED', '#94A3B8'],
+      ['#0EA5E9', '#94A3B8'],
       cs
     );
   }
@@ -625,7 +625,7 @@ class Dashboard {
     const averages = dayTotals.map((t, i) => (dayCounts[i] > 0 ? t / dayCounts[i] : 0));
 
     const ctx = canvas.getContext('2d');
-    drawBarChart(ctx, labels, averages, ['#EF4444', '#7C3AED', '#7C3AED', '#7C3AED', '#7C3AED', '#7C3AED', '#3B82F6']);
+    drawBarChart(ctx, labels, averages, ['#EF4444', '#0EA5E9', '#0EA5E9', '#0EA5E9', '#0EA5E9', '#0EA5E9', '#2563EB']);
   }
 
   initCategoriesChart(sales, products, categories, currencySymbol) {
@@ -641,7 +641,7 @@ class Dashboard {
       ctx,
       categoryData.labels,
       categoryData.data,
-      ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'],
+      ['#0EA5E9', '#22D3EE', '#38BDF8', '#2563EB', '#1E3A8A', '#7DD3FC'],
       currencySymbol
     );
   }
@@ -707,24 +707,24 @@ class Dashboard {
     }
 
     drawBarChart(ctx, labels, hourData, [
-      '#7C3AED',
-      '#A78BFA',
-      '#C4B5FD',
-      '#7C3AED',
-      '#A78BFA',
-      '#C4B5FD',
-      '#7C3AED',
-      '#A78BFA',
-      '#C4B5FD',
-      '#7C3AED',
-      '#A78BFA',
-      '#C4B5FD',
-      '#7C3AED',
-      '#A78BFA',
-      '#C4B5FD',
-      '#7C3AED',
-      '#A78BFA',
-      '#C4B5FD'
+      '#0EA5E9',
+      '#22D3EE',
+      '#38BDF8',
+      '#0EA5E9',
+      '#22D3EE',
+      '#38BDF8',
+      '#0EA5E9',
+      '#22D3EE',
+      '#38BDF8',
+      '#0EA5E9',
+      '#22D3EE',
+      '#38BDF8',
+      '#0EA5E9',
+      '#22D3EE',
+      '#38BDF8',
+      '#0EA5E9',
+      '#22D3EE',
+      '#38BDF8'
     ]);
   }
 

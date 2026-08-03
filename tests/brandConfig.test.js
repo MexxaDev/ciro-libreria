@@ -13,8 +13,8 @@ describe('brandConfig', () => {
     assert.ok(!BRAND.name.toLowerCase().includes('burger'));
   });
 
-  it('should use primary color #7C3AED', () => {
-    assert.equal(BRAND.color, '#7C3AED');
+  it('should use primary color #0EA5E9', () => {
+    assert.equal(BRAND.color, '#0EA5E9');
   });
 
   it('should not use VICE colors', () => {

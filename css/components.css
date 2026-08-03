@@ -307,12 +307,13 @@
   align-items: center;
   gap: var(--space-3);
   height: var(--header-height);
+  background: var(--gradient-brand);
 }
 
 .sidebar-logo {
   width: 36px;
   height: 36px;
-  background: var(--color-primary);
+  background: transparent;
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
@@ -336,7 +337,7 @@
 .sidebar-brand {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: var(--color-text);
+  color: var(--color-white);
 }
 
 .sidebar-nav {
@@ -1073,7 +1074,7 @@
 }
 
 .pagination-btn--active:hover {
-  background: var(--color-primary-dark, #6d28d9);
+  background: var(--color-primary-dark, #2563eb);
   color: white;
 }
 

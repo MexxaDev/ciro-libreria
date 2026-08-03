@@ -1,22 +1,30 @@
 'use strict';
 
 export const BRAND = {
-  name: 'Syntra POS',
-  shortName: 'Syntra',
-  tagline: 'Sistema de Gestión Moderno',
-  description: 'Sistema de gestión POS Syntra',
+  name: 'Ciro Librería Unidos',
+  shortName: 'Ciro',
+  tagline: 'Fotocopias · Impresiones · Diseños personalizados · Juguetería y regalería',
+  description:
+    'Librería, juguetería y regalería en Esperanza. Fotocopias, impresiones y diseños personalizados.',
+  address: 'Perú 459 - Esperanza',
+  services: [
+    'Fotocopias',
+    'Impresiones',
+    'Diseños personalizados',
+    'Juguetería y regalería'
+  ],
 
-  logo: 'icons/favicon.svg',
-  logoSmall: 'icons/favicon.svg',
+  logo: 'icons/logo.png',
+  logoSmall: 'icons/logo.png',
   favicon: 'icons/favicon.svg',
 
-  color: '#7C3AED',
-  colorDark: '#5B21B6',
+  color: '#0EA5E9',
+  colorDark: '#1E3A8A',
 
   currency: 'ARS',
   currencySymbol: '$',
 
-  defaultTicketFooter: 'Gracias por su compra!'
+  defaultTicketFooter: 'Ciro Librería Unidos · Perú 459, Esperanza'
 };
 
 export function getBrandLogo(className = '') {

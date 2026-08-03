@@ -2,58 +2,90 @@
 
 import { escapeHtml } from '../utils/sanitizer.js';
 
-class Toast {
-  static container = null;
+const ICONS = {
+  success: 'fa-circle-check',
+  error: 'fa-circle-xmark',
+  warning: 'fa-triangle-exclamation',
+  info: 'fa-circle-info'
+};
 
-  static init(container) {
-    this.container = container;
+const DURATION = 3500;
+
+let _container = null;
+
+function getContainer() {
+  if (_container && document.body.contains(_container)) {
+    return _container;
   }
-
-  static show(title, message, type = 'success', duration = 3000) {
-    if (!this.container) {
-      return;
-    }
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast--${type}`;
-    toast.innerHTML = `
-      <span class="toast__icon">${type === 'success' ? '\u2713' : type === 'error' ? '\u2715' : '\u26a0'}</span>
-      <div class="toast__content">
-        <div class="toast__title">${escapeHtml(title)}</div>
-        <div class="toast__message">${escapeHtml(message)}</div>
-      </div>
-      <button class="toast__close" aria-label="Cerrar notificación">\u2715</button>
-    `;
-
-    this.container.appendChild(toast);
-
-    toast.querySelector('.toast__close').addEventListener('click', () => {
-      this.dismiss(toast);
-    });
-
-    setTimeout(() => this.dismiss(toast), duration);
+  _container = document.querySelector('.toast-container') || document.querySelector('#toast-container');
+  if (!_container) {
+    _container = document.createElement('div');
+    _container.className = 'toast-container';
+    document.body.appendChild(_container);
   }
-
-  static dismiss(toast) {
-    toast.style.animation = 'slideOutRight var(--transition-normal)';
-    setTimeout(() => toast.remove(), 300);
-  }
-
-  static success(title, message) {
-    this.show(title, message, 'success');
-  }
-
-  static error(title, message) {
-    this.show(title, message, 'error', 5000);
-  }
-
-  static warning(title, message) {
-    this.show(title, message, 'warning', 4000);
-  }
-
-  static info(title, message) {
-    this.show(title, message, 'info', 4000);
-  }
+  return _container;
 }
 
-export default Toast;
+function show(type, title, message) {
+  const container = getContainer();
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast--${type}`;
+  toast.setAttribute('role', 'status');
+
+  const icon = document.createElement('span');
+  icon.className = `toast__icon fa-solid ${ICONS[type] || ICONS.info}`;
+  toast.appendChild(icon);
+
+  const content = document.createElement('div');
+  content.className = 'toast__content';
+  const titleEl = document.createElement('div');
+  titleEl.className = 'toast__title';
+  titleEl.textContent = escapeHtml(title || '');
+  const messageEl = document.createElement('div');
+  messageEl.className = 'toast__message';
+  messageEl.textContent = escapeHtml(message || '');
+  content.appendChild(titleEl);
+  content.appendChild(messageEl);
+  toast.appendChild(content);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'toast__close';
+  closeBtn.setAttribute('aria-label', 'Cerrar');
+  closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+  toast.appendChild(closeBtn);
+
+  const dismiss = () => {
+    toast.style.transition = 'all 0.3s ease';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  };
+  closeBtn.addEventListener('click', dismiss);
+
+  container.appendChild(toast);
+
+  const timer = setTimeout(dismiss, DURATION);
+  toast.addEventListener('mouseenter', () => clearTimeout(timer));
+  toast.addEventListener('mouseleave', () => {
+    if (toast.isConnected) {
+      setTimeout(dismiss, DURATION);
+    }
+  });
+}
+
+function init(container) {
+  _container = container;
+}
+
+export default {
+  init,
+  show,
+  success: (title, message) => show('success', title, message),
+  error: (title, message) => show('error', title, message),
+  warning: (title, message) => show('warning', title, message),
+  info: (title, message) => show('info', title, message)
+};

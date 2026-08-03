@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Syntra POS - Sistema de Gestión",
+  "description": "Ciro Librería Unidos - Sistema de Gestión",
   "scripts": {
     "lint": "eslint --ext .js,.mjs .",
     "format": "prettier --write \"**/*.{js,mjs,css,html,json,md}\"",

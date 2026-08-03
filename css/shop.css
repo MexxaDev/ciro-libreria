@@ -60,14 +60,13 @@ body.app-active {
 
 /* Header */
 .shop-header {
-  background: var(--color-surface);
   padding: var(--space-6) var(--space-4);
   border-bottom: 1px solid var(--color-border-light);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
   backdrop-filter: var(--blur-md);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--gradient-brand);
 }
 
 .shop-header-content {
@@ -84,7 +83,7 @@ body.app-active {
   border-radius: var(--radius-lg);
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--color-primary);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -102,7 +101,7 @@ body.app-active {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-primary);
+  background: transparent;
   color: white;
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
@@ -115,7 +114,7 @@ body.app-active {
 .shop-business-name {
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
-  color: var(--color-text);
+  color: var(--color-white);
   margin: 0 0 var(--space-1) 0;
 }
 
@@ -164,7 +163,7 @@ body.app-active {
 
 .shop-hours {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.85);
   margin: 0;
   display: flex;
   align-items: center;

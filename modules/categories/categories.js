@@ -124,7 +124,7 @@ class Categories {
       </div>
       <div class="form-group">
         <label class="form-label">Color</label>
-        <input type="color" class="form-input" id="cat-color" value="${category ? category.color : '#7C3AED'}">
+        <input type="color" class="form-input" id="cat-color" value="${category ? category.color : '#0EA5E9'}">
       </div>
     `;
 

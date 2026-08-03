@@ -198,6 +198,7 @@ function initLogin() {
         <button type="submit" class="btn btn-primary btn-block btn-lg">Ingresar</button>
       </form>
       <div class="login-footer">
+        ${BRAND.address} · ${BRAND.services.join(' · ')}
       </div>
     </div>
   `;
@@ -480,10 +481,11 @@ async function loadModule(route) {
 
 async function loadSettings() {
   const defaultSettings = [
-    { key: 'businessName', value: 'Mi Negocio' },
+    { key: 'businessName', value: BRAND.name },
+    { key: 'address', value: BRAND.address },
     { key: 'currency', value: 'ARS' },
     { key: 'currencySymbol', value: '$' },
-    { key: 'ticketFooter', value: 'Gracias por su compra!' },
+    { key: 'ticketFooter', value: BRAND.defaultTicketFooter },
     { key: 'logo', value: '' },
     { key: 'creditLimitEnabled', value: 'false' },
     { key: 'creditLimit', value: '250000' }

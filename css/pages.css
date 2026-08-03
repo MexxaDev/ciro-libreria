@@ -1317,7 +1317,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: var(--color-bg);
+  background: var(--gradient-brand);
 }
 
 .login-card {
@@ -1334,7 +1334,7 @@
   width: 64px;
   height: 64px;
   border-radius: var(--radius-xl);
-  background: var(--color-primary);
+  background: transparent;
   color: white;
   display: flex;
   align-items: center;

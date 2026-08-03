@@ -21,6 +21,7 @@ export async function exportCashToPDF(summary, movements, settings) {
   });
 
   const businessName = settings?.businessName || BRAND.name;
+  const businessAddress = settings?.address || BRAND.address;
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -44,6 +45,8 @@ export async function exportCashToPDF(summary, movements, settings) {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100);
+  doc.text(businessAddress, pageWidth / 2, y, { align: 'center' });
+  y += 5;
   doc.text('Reporte de Caja', pageWidth / 2, y, { align: 'center' });
   y += 5;
   doc.text(new Date().toLocaleString('es-AR'), pageWidth / 2, y, { align: 'center' });

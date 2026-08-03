@@ -217,7 +217,7 @@ class Reports {
     const data = getSalesByPeriod(this.sales, this.currentPeriod);
     const labels = getPeriodLabels(this.currentPeriod);
 
-    drawBarLineChart(ctx, labels, data, 'Ventas', ['#7C3AED', '#A78BFA', '#C4B5FD'], this.currencySymbol);
+    drawBarLineChart(ctx, labels, data, 'Ventas', ['#0EA5E9', '#22D3EE', '#38BDF8'], this.currencySymbol);
   }
 
   initCategoryChart(currencySymbol, categories) {
@@ -233,7 +233,7 @@ class Reports {
       ctx,
       categoryData.labels,
       categoryData.data,
-      ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'],
+      ['#0EA5E9', '#22D3EE', '#38BDF8', '#2563EB', '#1E3A8A', '#7DD3FC'],
       currencySymbol
     );
   }

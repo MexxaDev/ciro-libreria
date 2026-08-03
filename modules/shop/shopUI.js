@@ -38,7 +38,7 @@ class ShopUI {
   }
 
   static renderCategoryPill(category, isActive = false) {
-    const color = category.color || '#7C3AED';
+    const color = category.color || '#0EA5E9';
     return `
       <button class="shop-category-pill ${isActive ? 'active' : ''}"
               data-category-id="${category.id}"

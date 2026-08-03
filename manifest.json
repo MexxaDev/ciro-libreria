@@ -1,13 +1,13 @@
 {
-  "name": "Syntra POS",
-  "short_name": "Syntra",
-  "description": "Sistema de gestión POS Syntra para tu negocio",
+  "name": "Ciro Librería Unidos",
+  "short_name": "Ciro",
+  "description": "Librería, juguetería y regalería en Esperanza. Fotocopias, impresiones y diseños personalizados.",
   "id": "/",
   "scope": "/",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f9fafb",
-  "theme_color": "#7C3AED",
+  "theme_color": "#0EA5E9",
   "orientation": "any",
   "categories": ["business", "productivity"],
   "prefer_related_applications": false,
@@ -16,6 +16,11 @@
       "src": "icons/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

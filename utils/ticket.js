@@ -6,6 +6,7 @@ import { format } from './currency.js';
 import { logger } from './logger.js';
 import { getPayments, getPaymentType, getPaymentMethodLabel } from './payments.js';
 import { escapeHtml } from './sanitizer.js';
+import { BRAND } from '../config/brandConfig.js';
 
 export function renderTicketItems(sale) {
   if (!sale.items || !Array.isArray(sale.items) || sale.items.length === 0) {
@@ -44,8 +45,9 @@ export function renderTicketPayments(sale) {
 }
 
 export function renderTicketBody(sale, settings) {
-  const businessName = settings?.businessName || 'Mi Negocio';
-  const ticketFooter = settings?.ticketFooter || 'Gracias por su compra!';
+  const businessName = settings?.businessName || BRAND.name;
+  const businessAddress = settings?.address || BRAND.address;
+  const ticketFooter = settings?.ticketFooter || BRAND.defaultTicketFooter;
   const itemsHtml = renderTicketItems(sale);
   const paymentsHtml = renderTicketPayments(sale);
 
@@ -53,6 +55,7 @@ export function renderTicketBody(sale, settings) {
     <div style="font-family:monospace;max-width:min(300px,calc(100vw - 40px));margin:0 auto;padding:20px;background:white;">
       <div style="text-align:center;margin-bottom:20px;">
         <div style="font-size:18px;font-weight:bold;">${escapeHtml(businessName)}</div>
+        <div style="font-size:12px;color:#666;">${escapeHtml(businessAddress)}</div>
         <div style="font-size:12px;color:#666;">Ticket #${sale.id ? sale.id.substring(0, 8) : 'N/A'}</div>
         <div style="font-size:12px;color:#666;">${new Date(sale.date).toLocaleString('es-AR')}</div>
       </div>

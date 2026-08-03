@@ -6663,7 +6663,7 @@
     },
     {
       "key": "taxEnabled",
-      "value": "true"
+      "value": "false"
     },
     {
       "key": "ticketFooter",

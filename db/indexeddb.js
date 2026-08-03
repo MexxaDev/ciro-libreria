@@ -285,6 +285,20 @@ class IndexedDBWrapper {
       request.onerror = () => reject(request.error);
     });
   }
+
+  destroy() {
+    return new Promise((resolve, reject) => {
+      if (this.db) {
+        this.db.close();
+        this.db = null;
+      }
+
+      const request = indexedDB.deleteDatabase(DB_NAME);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('No se pudo borrar la base de datos'));
+    });
+  }
 }
 
 export default new IndexedDBWrapper();

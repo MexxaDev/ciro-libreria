@@ -699,7 +699,7 @@ class POS {
   _getTotal() {
     const subtotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const discountAmount = this.discountType === 'percent' ? subtotal * (this.discount / 100) : this.discount;
-    const taxEnabled = this.settings.taxEnabled !== 'false';
+    const taxEnabled = this.settings.taxEnabled === 'true';
     const taxRate = taxEnabled ? parseFloat(this.settings.taxRate) || 0 : 0;
     const taxableAmount = subtotal - discountAmount;
     const taxAmount = taxableAmount * (taxRate / 100);

@@ -1,6 +1,7 @@
 'use strict';
 
 import { settingRepo } from '../../db/repositories.js';
+import db from '../../db/indexeddb.js';
 import { exportDatabase } from '../../utils/export.js';
 import Modal from '../../components/modal.js';
 import Toast from '../../components/toast.js';
@@ -8,7 +9,6 @@ import state from '../../js/state.js';
 import { escapeHtml } from '../../utils/sanitizer.js';
 import backupManager from '../../services/backupManager.js';
 import { logger } from '../../utils/logger.js';
-import { BRAND } from '../../config/brandConfig.js';
 import {
   testConnection,
   loadGitHubConfig,
@@ -53,7 +53,7 @@ class Settings {
     const address = escapeHtml(this.settings.address || '');
     const ticketFooter = escapeHtml(this.settings.ticketFooter || '');
 
-    const taxEnabled = this.settings.taxEnabled !== 'false';
+    const taxEnabled = this.settings.taxEnabled === 'true';
     const taxRate = escapeHtml(this.settings.taxRate || '21');
 
     const shopEnabled = this.settings.shop_enabled === 'true' || false;
@@ -493,19 +493,19 @@ class Settings {
 
     resetBtn?.addEventListener('click', () => {
       Modal.show({
-        title: 'Confirmar Restablecer',
-        body: '<p>¿Estás seguro de restablecer todos los valores por defecto?</p>',
+        title: 'Confirmar Borrado Total',
+        body: '<p><strong>Se borrarán TODOS los datos de la aplicación:</strong> productos, ventas, clientes, usuarios, ajustes, snapshots y cachés.</p><p style="color:var(--color-danger);font-size:var(--text-sm);">Esta acción es irreversible y la app volverá a su estado inicial pidiendo login.</p>',
         footer: `
           <button class="btn btn-secondary" id="cancel-reset">Cancelar</button>
-          <button class="btn btn-danger" id="confirm-reset">Restablecer</button>
+          <button class="btn btn-danger" id="confirm-reset">Borrar Todo</button>
         `
       });
 
       requestAnimationFrame(() => {
         document.getElementById('cancel-reset')?.addEventListener('click', () => Modal.close());
-        document.getElementById('confirm-reset')?.addEventListener('click', () => {
+        document.getElementById('confirm-reset')?.addEventListener('click', async () => {
           Modal.close();
-          this.resetToDefaults();
+          await this.fullReset();
         });
       });
     });
@@ -886,53 +886,46 @@ class Settings {
     }
   }
 
-  async resetToDefaults() {
-    const defaults = [
-      { key: 'businessName', value: BRAND.name },
-      { key: 'currency', value: 'ARS' },
-      { key: 'currencySymbol', value: '$' },
-      { key: 'ticketFooter', value: BRAND.defaultTicketFooter },
-      { key: 'logo', value: '' },
-      { key: 'taxEnabled', value: 'true' },
-      { key: 'taxRate', value: '21' },
-      { key: 'shop_enabled', value: 'false' },
-      { key: 'shop_whatsapp', value: '' },
-      { key: 'shop_primary_color', value: '#0EA5E9' },
-      { key: 'shop_hours_open', value: '09:00' },
-      { key: 'shop_hours_close', value: '23:00' },
-      { key: 'shop_takeaway_enabled', value: 'true' },
-      { key: 'shop_delivery_enabled', value: 'true' },
-      { key: 'shop_min_delivery', value: '0' },
-      { key: 'shop_delivery_cost', value: '0' },
-      { key: 'shop_banner', value: '' },
-      { key: 'theme', value: 'light' },
-      { key: 'creditLimitEnabled', value: 'false' },
-      { key: 'creditLimit', value: '250000' }
-    ];
+  async fullReset() {
+    try {
+      backupManager.stopAutoBackup();
+    } catch {
+      /* ignore */
+    }
 
     try {
-      const existingSettings = await settingRepo.findAll();
-      const existingMap = {};
-      existingSettings.forEach(s => {
-        existingMap[s.key] = s;
-      });
-
-      const toSave = defaults.map(s => ({
-        ...s,
-        id: existingMap[s.key]?.id || undefined
-      }));
-
-      await settingRepo.saveAll(toSave);
-
-      this.logoDataUrl = '';
-      Toast.success('Éxito', 'Configuración restablecida');
-      await this.load();
-      state.set('settings', this.settings);
-      state.emit('data:settings-changed', this.settings);
-    } catch (error) {
-      logger.error('Settings', 'Error resetting settings', error);
-      Toast.error('Error', `No se pudo restablecer: ${error.message}`);
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      /* ignore */
     }
+
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+    } catch {
+      /* ignore */
+    }
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(reg => reg.unregister()));
+      }
+    } catch {
+      /* ignore */
+    }
+
+    try {
+      await db.destroy();
+    } catch (error) {
+      logger.error('Settings', 'Error deleting database', error);
+    }
+
+    Toast.success('Listo', 'Todos los datos fueron borrados');
+    setTimeout(() => window.location.reload(), 800);
   }
 }
 

@@ -30,6 +30,7 @@ import { hashPassword, verifyPassword, isLikelyHash, isSaltedHash } from '../uti
 import { logger } from '../utils/logger.js';
 import { BRAND } from '../config/brandConfig.js';
 import { loadPaymentMethods } from '../utils/payments.js';
+import { isLegacyProductId, hasLegacyCatalog, LEGACY_CATEGORY_IDS } from '../utils/catalogMigration.js';
 
 async function migratePasswords() {
   const users = await userRepo.findAll();
@@ -76,43 +77,52 @@ async function seedDatabase() {
     } else {
       await migratePasswords();
 
-      const products = await productRepo.findAll();
-      const hasOldCatalog = products.some(p => /^prod_\d+$/.test(p.id));
-
-      if (hasOldCatalog) {
-        for (const p of products) {
-          if (/^prod_\d+$/.test(p.id)) {
-            await productRepo.delete(p.id);
-          }
-        }
-        const categories = await categoryRepo.findAll();
-        for (const c of categories) {
-          if (['cat_1', 'cat_2', 'cat_3', 'cat_4'].includes(c.id)) {
-            await categoryRepo.delete(c.id);
-          }
-        }
-        for (const category of seedData.categories) {
-          await categoryRepo.create(category);
-        }
-        for (const product of seedData.products) {
-          await productRepo.create(product);
-        }
-        logger.info('App', 'Migrated to librería catalog: 11 categories, 344 products');
-      } else if (products.length < seedData.products.length) {
-        for (const product of seedData.products) {
-          const existing = products.find(p => p.id === product.id);
-          if (!existing) {
-            await productRepo.create(product);
-          }
-        }
-        logger.info('App', 'Additional products seeded');
-      }
-
       const settings = await settingRepo.findAll();
       const settingsMap = {};
       settings.forEach(s => {
         settingsMap[s.key] = s;
       });
+
+      if (settingsMap.catalogMigrated?.value !== 'true') {
+        const products = await productRepo.findAll();
+        const categories = await categoryRepo.findAll();
+
+        if (hasLegacyCatalog(categories)) {
+          for (const p of products) {
+            if (isLegacyProductId(p.id)) {
+              await productRepo.delete(p.id);
+            }
+          }
+          for (const c of categories) {
+            if (LEGACY_CATEGORY_IDS.includes(c.id)) {
+              await categoryRepo.delete(c.id);
+            }
+          }
+          const existingCategoryIds = new Set(categories.map(c => c.id));
+          for (const category of seedData.categories) {
+            if (!existingCategoryIds.has(category.id)) {
+              await categoryRepo.create(category);
+            }
+          }
+          const existingProductIds = new Set(products.map(p => p.id));
+          for (const product of seedData.products) {
+            if (!existingProductIds.has(product.id)) {
+              await productRepo.create(product);
+            }
+          }
+          logger.info('App', 'Migrated to librería catalog: 11 categories, 344 products');
+        } else if (products.length < seedData.products.length) {
+          for (const product of seedData.products) {
+            const existing = products.find(p => p.id === product.id);
+            if (!existing) {
+              await productRepo.create(product);
+            }
+          }
+          logger.info('App', 'Additional products seeded');
+        }
+
+        await settingRepo.create({ key: 'catalogMigrated', value: 'true' });
+      }
 
       for (const setting of seedData.settings) {
         if (!settingsMap[setting.key]) {
@@ -359,6 +369,13 @@ async function loadModule(route) {
         const barcodeSearch = document.getElementById('product-barcode-search');
         if (barcodeSearch && !barcodeSearch._handlerAttached) {
           barcodeSearch._handlerAttached = true;
+          let searchTimeout;
+          barcodeSearch.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+              Products.searchLive(barcodeSearch.value);
+            }, 150);
+          });
           barcodeSearch.addEventListener('keydown', e => {
             if (e.key === 'Enter') {
               e.preventDefault();

@@ -8,6 +8,7 @@ import { validateProduct } from '../../utils/validators.js';
 import Table from '../../components/table.js';
 import { escapeHtml } from '../../utils/sanitizer.js';
 import { logger } from '../../utils/logger.js';
+import { findProductsByQuery } from '../../utils/productSearch.js';
 import state from '../../js/state.js';
 
 class Products {
@@ -50,34 +51,26 @@ class Products {
     });
   }
 
-  searchBarcode(code) {
-    const product = this.products.find(p => {
-      if (p.barcode === code) {
-        return true;
-      }
-      if (p.barcodes_extra) {
-        try {
-          return JSON.parse(p.barcodes_extra).includes(code);
-        } catch {
-          return false;
-        }
-      }
-      return false;
-    });
-    if (product) {
+  searchBarcode(query) {
+    const term = (query || '').trim();
+    if (!term) {
       this.render();
-      const index = this.products.indexOf(product);
-      requestAnimationFrame(() => {
-        this.table.highlightRow(index);
-      });
       return;
     }
 
+    const matches = findProductsByQuery(this.products, term);
+    if (matches.length > 0) {
+      this.render(matches);
+      return;
+    }
+
+    const isNumeric = /^\d+$/.test(term);
+    const prefill = isNumeric ? { barcode: term } : { name: term };
     const body = `
       <div style="text-align:center;padding:var(--space-4) 0;">
-        <i class="fa-solid fa-barcode" style="font-size:48px;color:var(--color-text-muted);margin-bottom:var(--space-3);display:block;"></i>
-        <p style="font-size:var(--text-lg);font-weight:var(--font-medium);margin-bottom:var(--space-2);">No existe el artículo</p>
-        <p style="color:var(--color-text-secondary);margin-bottom:var(--space-3);">Código: <strong>${escapeHtml(code)}</strong></p>
+        <i class="fa-solid fa-magnifying-glass" style="font-size:48px;color:var(--color-text-muted);margin-bottom:var(--space-3);display:block;"></i>
+        <p style="font-size:var(--text-lg);font-weight:var(--font-medium);margin-bottom:var(--space-2);">No se encontró el artículo</p>
+        <p style="color:var(--color-text-secondary);margin-bottom:var(--space-3);">Búsqueda: <strong>${escapeHtml(term)}</strong></p>
         <p>¿Desea cargarlo?</p>
       </div>
     `;
@@ -91,8 +84,33 @@ class Products {
     document.getElementById('barcode-notfound-cancel').addEventListener('click', () => Modal.close());
     document.getElementById('barcode-notfound-create').addEventListener('click', () => {
       Modal.close();
-      this.openModal(null, { barcode: code });
+      this.openModal(null, prefill);
     });
+  }
+
+  searchLive(query) {
+    const term = (query || '').trim();
+    if (!term) {
+      this.render();
+      return;
+    }
+
+    const matches = findProductsByQuery(this.products, term);
+    if (matches.length > 0) {
+      this.render(matches);
+      return;
+    }
+
+    const container = document.getElementById('product-list');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state__icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <h3 class="empty-state__title">Sin resultados</h3>
+          <p class="empty-state__description">No se encontró ningún artículo para "<strong>${escapeHtml(term)}</strong>".</p>
+        </div>
+      `;
+    }
   }
 
   exportProducts() {
@@ -160,7 +178,7 @@ class Products {
     reader.readAsText(file);
   }
 
-  render() {
+  render(list = this.products) {
     const container = document.getElementById('product-list');
     if (!container) {
       return;
@@ -228,7 +246,7 @@ class Products {
 
     this.table = new Table({
       columns,
-      data: this.products,
+      data: list,
       actions,
       onRowClick: product => this.openModal(product),
       pageSize: 20
@@ -241,7 +259,7 @@ class Products {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const index = parseInt(btn.dataset.rowIndex);
-        this.openModal(this.products[index]);
+        this.openModal(list[index]);
       });
     });
 
@@ -249,7 +267,7 @@ class Products {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const index = parseInt(btn.dataset.rowIndex);
-        this.openStockAdjustModal(this.products[index]);
+        this.openStockAdjustModal(list[index]);
       });
     });
 
@@ -257,7 +275,7 @@ class Products {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         const index = parseInt(btn.dataset.rowIndex);
-        const product = this.products[index];
+        const product = list[index];
 
         let hasSales = false;
         try {
@@ -595,7 +613,7 @@ class Products {
           await productRepo.update({ ...product, ...productData });
           Toast.success('Éxito', 'Producto actualizado');
         } else {
-          await productRepo.create({ ...productData, id: `prod_${Date.now()}` });
+          await productRepo.create({ ...productData, id: `prod_${Date.now().toString(36)}` });
           Toast.success('Éxito', 'Producto creado');
         }
         Modal.close();

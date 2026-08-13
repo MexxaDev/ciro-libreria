@@ -69,9 +69,8 @@ async function seedDatabase() {
           await paymentMethodRepo.create(pm);
         }
       }
-      const defaultCustomer = seedData.customers?.find(c => c.id === 'cust_final');
-      if (defaultCustomer) {
-        await customerRepo.create(defaultCustomer);
+      for (const customer of seedData.customers || []) {
+        await customerRepo.create(customer);
       }
       logger.info('App', 'Seed data loaded');
     } else {
@@ -152,6 +151,13 @@ async function seedDatabase() {
           createdAt: new Date().toISOString()
         });
         logger.info('App', 'Default customer seeded');
+      }
+
+      const existingCustomerIds = new Set(existingCustomers.map(c => c.id));
+      for (const customer of seedData.customers || []) {
+        if (!existingCustomerIds.has(customer.id)) {
+          await customerRepo.create(customer);
+        }
       }
     }
   } catch (error) {

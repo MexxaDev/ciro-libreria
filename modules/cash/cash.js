@@ -131,12 +131,16 @@ class Cash {
         const hasSales = d.sales !== 0;
         const hasManualIn = d.manualIn !== 0;
         const hasManualOut = d.manualOut !== 0;
-        if (!hasSales && !hasManualIn && !hasManualOut) {
+        const hasDebt = (d.debtPayments || 0) !== 0;
+        if (!hasSales && !hasManualIn && !hasManualOut && !hasDebt) {
           continue;
         }
 
         if (hasSales) {
           html += `<div class="cash-summary__row"><span>Ventas ${escapeHtml(pm.label)}</span><span>${format(d.sales)}</span></div>`;
+        }
+        if (hasDebt) {
+          html += `<div class="cash-summary__row cash-summary__row--sub"><span>Cobro de deuda (${escapeHtml(pm.label)})</span><span style="color:var(--color-success);">+${format(d.debtPayments)}</span></div>`;
         }
         if (hasManualIn) {
           html += `<div class="cash-summary__row cash-summary__row--sub"><span>Ingreso Manual (${escapeHtml(pm.label)})</span><span style="color:var(--color-success);">+${format(d.manualIn)}</span></div>`;
@@ -149,6 +153,7 @@ class Cash {
       html += `
       <div class="cash-summary__row"><span>Ingresos Manuales</span><span style="color:var(--color-success);">+${format(s.manualIn)}</span></div>
       <div class="cash-summary__row"><span>Egresos Manuales</span><span style="color:var(--color-danger);">-${format(s.manualOut)}</span></div>
+      ${s.debtPayments ? `<div class="cash-summary__row"><span>Cobros de deuda</span><span style="color:var(--color-success);">+${format(s.debtPayments)}</span></div>` : ''}
       <div class="cash-summary__divider"></div>
       <div class="cash-summary__row"><span>Ventas Efectivo</span><span>${format(s.cashSales)}</span></div>
       <div class="cash-summary__row"><span>Ventas Transferencia</span><span>${format(s.transferSales)}</span></div>
@@ -260,9 +265,17 @@ class Cash {
       in: 'var(--color-success)',
       out: 'var(--color-danger)',
       sale: 'var(--color-primary)',
-      cancellation: 'var(--color-warning)'
+      cancellation: 'var(--color-warning)',
+      payment: 'var(--color-info)'
     };
-    const labels = { opening: 'Apertura', in: 'Ingreso', out: 'Egreso', sale: 'Venta', cancellation: 'Cancelación' };
+    const labels = {
+      opening: 'Apertura',
+      in: 'Ingreso',
+      out: 'Egreso',
+      sale: 'Venta',
+      cancellation: 'Cancelación',
+      payment: 'Cobro de deuda'
+    };
     let html = '<div class="movements-list">';
     sorted.forEach(m => {
       const typeLabel = labels[m.type] || m.type;
@@ -398,11 +411,15 @@ class Cash {
                 const hasSales = d.sales !== 0;
                 const hasManualIn = d.manualIn !== 0;
                 const hasManualOut = d.manualOut !== 0;
-                if (!hasSales && !hasManualIn && !hasManualOut) {
+                const hasDebt = (d.debtPayments || 0) !== 0;
+                if (!hasSales && !hasManualIn && !hasManualOut && !hasDebt) {
                   continue;
                 }
                 if (hasSales) {
                   rows += `<div class="cash-summary__row"><span>Ventas ${escapeHtml(pm.label)}</span><span>${format(d.sales)}</span></div>`;
+                }
+                if (hasDebt) {
+                  rows += `<div class="cash-summary__row cash-summary__row--sub"><span>Cobro de deuda (${escapeHtml(pm.label)})</span><span style="color:var(--color-success);">+${format(d.debtPayments)}</span></div>`;
                 }
                 if (hasManualIn) {
                   rows += `<div class="cash-summary__row cash-summary__row--sub"><span>Ingreso Manual (${escapeHtml(pm.label)})</span><span style="color:var(--color-success);">+${format(d.manualIn)}</span></div>`;
@@ -416,6 +433,7 @@ class Cash {
             return `
           <div class="cash-summary__row"><span>Ingresos Manuales</span><span style="color:var(--color-success);">+${format(closure.manualIn)}</span></div>
           <div class="cash-summary__row"><span>Egresos Manuales</span><span style="color:var(--color-danger);">-${format(closure.manualOut)}</span></div>
+          ${closure.debtPayments ? `<div class="cash-summary__row"><span>Cobros de deuda</span><span style="color:var(--color-success);">+${format(closure.debtPayments)}</span></div>` : ''}
           <div class="cash-summary__divider"></div>
           <div class="cash-summary__row"><span>Ventas Efectivo</span><span>${format(closure.cashSales)}</span></div>
           <div class="cash-summary__row"><span>Ventas Transferencia</span><span>${format(closure.transferSales)}</span></div>

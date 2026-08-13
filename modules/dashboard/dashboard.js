@@ -58,6 +58,13 @@ class Dashboard {
         this.load();
       }
     });
+
+    state.on('data:cash-movements-changed', () => {
+      this.cache.lastLoad = 0;
+      if (this.element) {
+        this.load();
+      }
+    });
   }
 
   async load() {
@@ -245,7 +252,7 @@ class Dashboard {
         ${this.renderKPICard('fa-ticket', 'Ticket Prom.', currencySymbol + ' ' + avgTicket.toFixed(2), this.getChangePercent(avgTicket, avgTicketLastMonth), 'warning')}
         ${this.renderKPICard('fa-cash-register', 'Caja', currentSession ? currencySymbol + ' ' + (this.cache.cashSummary?.expectedTotal || 0).toFixed(2) : 'Cerrada', currentSession ? 'Abierta' : 'Cerrada', currentSession ? 'success' : 'danger', currentSession ? (this.cache.cashSummary?.movementCount || 0) + ' movimientos' : '')}
         ${this.renderKPICard('fa-boxes', 'Productos', products.length, products.filter(p => p.stock <= 5).length + ' stock bajo', 'info')}
-        ${this.renderKPICard('fa-users', 'Clientes', customers.length, customers.filter(c => (parseFloat(c.balance) || 0) < 0).length + ' con deuda', 'info')}
+        ${this.renderKPICard('fa-users', 'Clientes', customers.length, customers.filter(c => (parseFloat(c.balance) || 0) > 0).length + ' con deuda', 'info')}
       </div>
 
       <div class="charts-grid" id="charts-section">
@@ -411,7 +418,7 @@ class Dashboard {
       alerts.push({ type: 'warning', icon: 'fa-chart-line', text: 'Sin ventas registradas hoy' });
     }
 
-    const customersWithDebt = customers.filter(c => (parseFloat(c.balance) || 0) < 0);
+    const customersWithDebt = customers.filter(c => (parseFloat(c.balance) || 0) > 0);
     if (customersWithDebt.length > 0) {
       alerts.push({ type: 'danger', icon: 'fa-user-clock', text: `${customersWithDebt.length} cliente(s) con deuda` });
     }

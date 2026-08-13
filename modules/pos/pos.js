@@ -980,8 +980,16 @@ class POS {
 
     const accountPayment = this.payments.find(p => p.method === 'account');
     if (accountPayment && accountPayment.amount > 0) {
-      if (!this.currentCustomer) {
+      if (!this.currentCustomer || this.currentCustomer.id === 'cust_final' || this.currentCustomer.isDefault) {
         return 'account_no_customer';
+      }
+      const creditLimitEnabled = this.settings.creditLimitEnabled !== 'false';
+      if (creditLimitEnabled) {
+        const creditLimit = parseFloat(this.settings.creditLimit) || 0;
+        const currentBalance = parseFloat(this.currentCustomer.balance) || 0;
+        if (creditLimit > 0 && currentBalance + accountPayment.amount > creditLimit) {
+          return 'account_insufficient';
+        }
       }
     }
 
@@ -1038,7 +1046,7 @@ class POS {
         empty_cart: 'El carrito está vacío',
         no_session: 'No hay una sesión de caja abierta',
         account_no_customer: 'Seleccioná un cliente para usar cuenta corriente',
-        account_insufficient: 'Saldo insuficiente en la cuenta corriente'
+        account_insufficient: 'El cliente excede el límite de crédito configurado'
       };
       if (error.startsWith('stock:')) {
         const [, name, stock] = error.split(':');
@@ -1085,10 +1093,22 @@ class POS {
         }
 
         const accountPayment = this.payments.find(p => p.method === 'account');
-        if (accountPayment && accountPayment.amount > 0 && this.currentCustomer) {
+        if (
+          accountPayment &&
+          accountPayment.amount > 0 &&
+          this.currentCustomer &&
+          this.currentCustomer.id !== 'cust_final' &&
+          !this.currentCustomer.isDefault
+        ) {
           previousBalance = this.currentCustomer.balance;
           previousBalanceCustomer = this.currentCustomer;
-          this.currentCustomer.balance = (this.currentCustomer.balance || 0) + accountPayment.amount;
+          // La venta completa se imputa a la cuenta corriente del cliente.
+          // Lo cobrado en el momento por otros medios se descuenta como abono inmediato.
+          const nonAccount = this.payments
+            .filter(p => p.method !== 'account')
+            .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+          const debtToAdd = Math.max(0, sale.total - nonAccount);
+          this.currentCustomer.balance = (this.currentCustomer.balance || 0) + debtToAdd;
           await customerRepo.update(this.currentCustomer);
         }
 

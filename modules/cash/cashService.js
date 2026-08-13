@@ -117,6 +117,8 @@ class CashService {
       initialAmount: summary.initialAmount,
       manualIn: summary.manualIn,
       manualOut: summary.manualOut,
+      debtPayments: summary.debtPayments,
+      cashDebtPayments: summary.cashDebtPayments,
       cashSales: summary.cashSales,
       transferSales: summary.transferSales,
       debitSales: summary.debitSales,
@@ -263,40 +265,43 @@ class CashService {
 
     const methodsMap = {};
     for (const pm of PAYMENT_METHODS) {
-      methodsMap[pm.id] = { sales: 0, manualIn: 0, manualOut: 0, net: 0 };
+      methodsMap[pm.id] = { sales: 0, manualIn: 0, manualOut: 0, debtPayments: 0, net: 0 };
     }
 
     for (const sale of sessionSales) {
       const payments = getPayments(sale);
       for (const p of payments) {
         if (!methodsMap[p.method]) {
-          methodsMap[p.method] = { sales: 0, manualIn: 0, manualOut: 0, net: 0 };
+          methodsMap[p.method] = { sales: 0, manualIn: 0, manualOut: 0, debtPayments: 0, net: 0 };
         }
         methodsMap[p.method].sales += p.amount;
       }
     }
 
     for (const m of movements) {
-      if (m.type === 'in' || m.type === 'out') {
+      if (m.type === 'in' || m.type === 'out' || m.type === 'payment') {
         const method = m.paymentMethod || 'cash';
         if (!methodsMap[method]) {
-          methodsMap[method] = { sales: 0, manualIn: 0, manualOut: 0, net: 0 };
+          methodsMap[method] = { sales: 0, manualIn: 0, manualOut: 0, debtPayments: 0, net: 0 };
         }
         if (m.type === 'in') {
           methodsMap[method].manualIn += parseFloat(m.amount);
-        } else {
+        } else if (m.type === 'out') {
           methodsMap[method].manualOut += parseFloat(m.amount);
+        } else {
+          methodsMap[method].debtPayments += parseFloat(m.amount);
         }
       }
     }
 
     for (const id of Object.keys(methodsMap)) {
       const d = methodsMap[id];
-      d.net = d.sales + d.manualIn - d.manualOut;
+      d.net = d.sales + d.manualIn + (d.debtPayments || 0) - d.manualOut;
     }
 
     const manualIn = movements.filter(m => m.type === 'in').reduce((s, m) => s + parseFloat(m.amount), 0);
     const manualOut = movements.filter(m => m.type === 'out').reduce((s, m) => s + parseFloat(m.amount), 0);
+    const debtPayments = movements.filter(m => m.type === 'payment').reduce((s, m) => s + parseFloat(m.amount), 0);
     const cashSales = methodsMap['cash']?.sales || 0;
     const transferSales = methodsMap['transfer']?.sales || 0;
     const debitSales = methodsMap['debit']?.sales || 0;
@@ -304,12 +309,15 @@ class CashService {
     const totalSales = sessionSales.reduce((s, sale) => s + parseFloat(sale.total), 0);
     const cashManualIn = methodsMap['cash']?.manualIn || 0;
     const cashManualOut = methodsMap['cash']?.manualOut || 0;
-    const expectedTotal = initialAmount + cashManualIn - cashManualOut + cashSales;
+    const cashDebtPayments = methodsMap['cash']?.debtPayments || 0;
+    const expectedTotal = initialAmount + cashManualIn + cashDebtPayments - cashManualOut + cashSales;
 
     return {
       initialAmount,
       manualIn,
       manualOut,
+      debtPayments,
+      cashDebtPayments,
       cashSales,
       transferSales,
       debitSales,

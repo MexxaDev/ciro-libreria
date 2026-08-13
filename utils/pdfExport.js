@@ -8,7 +8,8 @@ const MOVEMENT_LABELS = {
   opening: 'Apertura',
   in: 'Ingreso Manual',
   out: 'Egreso Manual',
-  sale: 'Venta'
+  sale: 'Venta',
+  payment: 'Cobro de deuda'
 };
 
 export async function exportCashToPDF(summary, movements, settings) {
@@ -106,12 +107,16 @@ export async function exportCashToPDF(summary, movements, settings) {
       const hasSales = d.sales !== 0;
       const hasManualIn = d.manualIn !== 0;
       const hasManualOut = d.manualOut !== 0;
-      if (!hasSales && !hasManualIn && !hasManualOut) {
+      const hasDebt = (d.debtPayments || 0) !== 0;
+      if (!hasSales && !hasManualIn && !hasManualOut && !hasDebt) {
         continue;
       }
 
       if (hasSales) {
         summaryRows.push([`Ventas ${pm.label}`, format(d.sales)]);
+      }
+      if (hasDebt) {
+        summaryRows.push([`Cobro de deuda (${pm.label})`, `+ ${format(d.debtPayments)}`]);
       }
       if (hasManualIn) {
         summaryRows.push([`Ingreso Manual (${pm.label})`, `+ ${format(d.manualIn)}`]);
@@ -123,7 +128,12 @@ export async function exportCashToPDF(summary, movements, settings) {
   } else {
     summaryRows.push(
       ['Ingresos Manuales', `+ ${format(summary.manualIn)}`],
-      ['Egresos Manuales', `- ${format(summary.manualOut)}`],
+      ['Egresos Manuales', `- ${format(summary.manualOut)}`]
+    );
+    if (summary.debtPayments) {
+      summaryRows.push(['Cobros de deuda', `+ ${format(summary.debtPayments)}`]);
+    }
+    summaryRows.push(
       ['Ventas Efectivo', format(summary.cashSales)],
       ['Ventas Transferencia', format(summary.transferSales)],
       ['Ventas Débito', format(summary.debitSales)],

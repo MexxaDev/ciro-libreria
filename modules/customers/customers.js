@@ -8,6 +8,8 @@ import { escapeHtml } from '../../utils/sanitizer.js';
 import { format } from '../../utils/currency.js';
 import { logger } from '../../utils/logger.js';
 import state from '../../js/state.js';
+import cashService from '../cash/cashService.js';
+import { loadPaymentMethods, PAYMENT_METHODS } from '../../utils/payments.js';
 
 class Customers {
   constructor() {
@@ -267,16 +269,28 @@ class Customers {
     });
   }
 
-  openPayBalance(customer) {
-    const currentBalance = customer.balance || 0;
+  async openPayBalance(customer) {
+    await loadPaymentMethods();
+    const currentBalance = parseFloat(customer.balance) || 0;
+    const methodOptions = PAYMENT_METHODS.filter(m => m.id !== 'account')
+      .map(
+        m =>
+          `<option value="${m.id}" ${m.id === 'cash' ? 'selected' : ''}>${escapeHtml(m.label)}</option>`
+      )
+      .join('');
+
     const body = `
       <div style="margin-bottom:var(--space-3);">
-        <strong>${customer.name}</strong><br>
+        <strong>${escapeHtml(customer.name)}</strong><br>
         <span style="color:var(--color-text-secondary);font-size:var(--text-sm);">Deuda actual: ${format(currentBalance)}</span>
       </div>
       <div class="form-group">
-        <label class="form-label" for="balance-amount">Monto a pagar</label>
+        <label class="form-label" for="balance-amount">Monto a cobrar</label>
         <input type="number" class="form-input" id="balance-amount" min="0" step="0.01" placeholder="0.00" max="${currentBalance}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="balance-payment-method">Medio de pago</label>
+        <select class="form-input" id="balance-payment-method">${methodOptions}</select>
       </div>
     `;
 
@@ -295,16 +309,36 @@ class Customers {
         Toast.error('Error', 'Ingresá un monto válido');
         return;
       }
+      if (amount > currentBalance) {
+        Toast.error('Error', `El monto supera la deuda actual (${format(currentBalance)})`);
+        return;
+      }
+      const paymentMethod = document.getElementById('balance-payment-method')?.value || 'cash';
 
       try {
+        await cashService.getActiveSession();
+        if (!cashService.currentSession) {
+          Toast.error('Error', 'Abrí la caja para registrar el cobro');
+          return;
+        }
+
+        await cashService.addMovement(
+          'payment',
+          amount,
+          `Cobro de deuda: ${customer.name}`,
+          paymentMethod
+        );
+
         const newBalance = Math.max(0, currentBalance - amount);
         await customerRepo.update({ ...customer, balance: newBalance });
         customer.balance = newBalance;
         Toast.success('Éxito', `Pago registrado: ${format(amount)}`);
         Modal.close();
         state.emit('data:customers-changed');
+        state.emit('data:cash-movements-changed');
         this.load();
       } catch (error) {
+        logger.error('Customers', 'Error registering balance payment:', error);
         Toast.error('Error', 'No se pudo registrar el pago');
       }
     });
